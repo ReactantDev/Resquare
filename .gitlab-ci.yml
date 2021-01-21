@@ -1,0 +1,50 @@
+stages:
+  - build
+  - test
+  - deploy
+  - visualize
+
+image: java:8-jdk
+
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+before_script:
+  - export GRADLE_USER_HOME=`pwd`/.gradle
+
+build:
+  stage: build
+  script: ./gradlew --build-cache assemble
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    policy: push
+    paths:
+      - build
+      - .gradle
+
+test:
+  stage: test
+  script:
+    - './gradlew test jacocoTestReport' # jacoco must be configured to create an xml report
+    - cat build/reports/jacoco/test/html/index.html
+  artifacts:
+    paths:
+      - build/reports/jacoco/test/jacocoTestReport.xml
+
+coverage:
+  # Must be in a stage later than test-jdk11's stage.
+  # The `visualize` stage does not exist by default.
+  # Please define it first, or chose an existing stage like `deploy`.
+  stage: visualize
+  image: haynes/jacoco2cobertura:1.0.4
+  script:
+    # convert report from jacoco to cobertura
+    - 'python /opt/cover2cover.py build/reports/jacoco/test/jacocoTestReport.xml src/main/java > build/cobertura.xml'
+    # read the <source></source> tag and prepend the path to every filename attribute
+    - 'python /opt/source2filename.py build/cobertura.xml'
+  needs: ["test"]
+  dependencies:
+    - test
+  artifacts:
+    reports:
+      cobertura: build/cobertura.xml

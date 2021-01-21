@@ -1,0 +1,10 @@
+name: ResquareDebugger
+main: dev.reactant.resquare.bukkit.debugger.ResquareBukkitDebugger
+version: 0.0.1
+api-version: "1.15"
+depend: [Resquare]
+commands:
+  resquare-debug:
+    description: Resquare debugging command
+    usage: /<command>
+    permission: resquare.debug
