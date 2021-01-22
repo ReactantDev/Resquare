@@ -2,9 +2,10 @@ package dev.reactant.resquare.bukkit
 
 import dev.reactant.resquare.bukkit.container.BukkitRootContainer
 import org.bukkit.inventory.Inventory
+import java.util.concurrent.ConcurrentHashMap
 
 class BukkitRootContainerController {
-    private val inventoryRootContainerMap = HashMap<Inventory, BukkitRootContainer>()
+    private val inventoryRootContainerMap = ConcurrentHashMap<Inventory, BukkitRootContainer>()
 
     fun onEnable() {
     }

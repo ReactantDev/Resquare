@@ -122,8 +122,8 @@ class NodeRenderState(
     }
 
     fun closeNodeState() {
-        subNodeRenderStates.keys.forEach {
-            if (!currentReachedStateKeys.contains(it)) subNodeRenderStates.remove(it)!!.unmount()
+        subNodeRenderStates.keys.filter { !currentReachedStateKeys.contains(it) }.forEach {
+            subNodeRenderStates.remove(it)!!.unmount()
         }
 
         currentReachedStateKeys.clear()

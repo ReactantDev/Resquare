@@ -50,6 +50,7 @@ dependencies {
     compileOnly("org.spigotmc:spigot-api:1.16.4-R0.1-SNAPSHOT")
 
     implementation("com.google.code.gson:gson:2.8.6")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.3.9")
 
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")

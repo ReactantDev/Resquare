@@ -32,7 +32,7 @@ class BukkitRootContainer internal constructor(
 
     val inventory = Bukkit.createInventory(null, width * height, title)
 
-    private val pixelRenderResultObservable = renderResultObservable
+    val styleRenderResultObservable = renderResultObservable
         .observeOn(ResquareBukkit.instance.mainThreadScheduler)
         .map { BukkitStyleRender.convertBodyToPixels(it as Body, width, height) }
 
@@ -42,7 +42,7 @@ class BukkitRootContainer internal constructor(
         private set
 
     // TODO: to develop event system, it is needed to store pixel.element so we can find out which element is being click
-    private val pixelRenderResultSubscription = pixelRenderResultObservable.subscribe {
+    private val styleRenderResultSubscription = styleRenderResultObservable.subscribe {
         lastStyleRenderResult = it
         inventoryRendered = true
         for (x in 0 until width) {
@@ -60,7 +60,7 @@ class BukkitRootContainer internal constructor(
 
     override fun destroy() {
         updatesSubscription?.dispose()
-        pixelRenderResultSubscription?.dispose()
+        styleRenderResultSubscription?.dispose()
         rootState.unmount()
         threadPool?.shutdown()
         destroed = true

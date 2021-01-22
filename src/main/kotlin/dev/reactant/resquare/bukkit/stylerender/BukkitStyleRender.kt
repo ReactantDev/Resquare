@@ -81,11 +81,11 @@ object BukkitStyleRender {
         val bodyNode = convertElementToStretchNode(body)
         val bodyLayout = bodyNode.computeLayout(Size(containerWidth.toFloat(), containerHeight.toFloat()))
 
-        fun convertToBoundingRect(node: Node, nodeLayout: Layout) {
+        fun convertToBoundingRect(node: Node, nodeLayout: Layout, parentLayout: Layout?) {
             val el = nodeElMap[node]!!
             BoundingRect(
-                x = nodeLayout.x,
-                y = nodeLayout.y,
+                x = nodeLayout.x + (parentLayout?.x ?: 0f),
+                y = nodeLayout.y + (parentLayout?.y ?: 0f),
                 width = nodeLayout.width,
                 height = nodeLayout.height,
                 element = el,
@@ -97,11 +97,11 @@ object BukkitStyleRender {
                 }
             }
             node.getChildren().forEachIndexed { index, _ ->
-                convertToBoundingRect(node.getChildren()[index], nodeLayout.children[index])
+                convertToBoundingRect(node.getChildren()[index], nodeLayout.children[index], nodeLayout)
             }
         }
 
-        convertToBoundingRect(bodyNode, bodyLayout)
+        convertToBoundingRect(bodyNode, bodyLayout, null)
         bodyNode.free()
 
         val pixels = convertBoxesToPixels(elementPixelatedBoundingRectMap.values, containerWidth, containerHeight)
