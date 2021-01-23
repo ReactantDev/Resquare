@@ -4,14 +4,14 @@ import dev.reactant.resquare.bukkit.container.createUI
 import dev.reactant.resquare.bukkit.debugger.server.ResquareWebsocketServer
 import dev.reactant.resquare.dom.childrenOf
 import dev.reactant.resquare.dom.declareComponent
-import dev.reactant.resquare.dom.unaryPlus
 import dev.reactant.resquare.elements.DivProps
 import dev.reactant.resquare.elements.div
 import dev.reactant.resquare.elements.styleOf
+import dev.reactant.resquare.event.ResquareClickEvent
+import dev.reactant.resquare.render.useCallback
 import dev.reactant.resquare.render.useEffect
-import dev.reactant.resquare.render.useMemo
+import dev.reactant.resquare.render.useRootContainer
 import dev.reactant.resquare.render.useState
-import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
@@ -62,81 +62,68 @@ class ResquareBukkitDebugger : JavaPlugin() {
                 ))
             }
 
-            val test = declareComponent {
-                val (progress, setProgress) = useState(5)
-
+            val testApp = declareComponent {
+                val (progress, setProgress) = useState(0f)
+                val rootContainer = useRootContainer()
                 useEffect({
-                    Bukkit.getScheduler().runTaskTimer(ResquareBukkitDebugger.instance, Runnable {
-                        if (progress == 100) {
-                            setProgress(0)
-                        } else {
-                            setProgress(progress + 1)
-                        }
-                    }, 1, 1).let { task -> { task.cancel() } }
+                    val handler = rootContainer.addEventListener<ResquareClickEvent<*>> { it.preventDefault() }
+                    return@useEffect { rootContainer.removeEventListener(handler) }
+                }, arrayOf())
+
+                val onIncreaseButtonClick = useCallback({ e: ResquareClickEvent<*> ->
+                    setProgress((progress + (1f / 9) * 100).coerceAtMost(100f))
                 }, arrayOf(progress))
 
-                val items = useMemo({
-                    (0..(progress / 2)).map { ItemStack(Material.COOKED_BEEF) }
+                val onDecreaseButtonClick = useCallback({ e: ResquareClickEvent<*> ->
+                    setProgress((progress - (1f / 9) * 100).coerceAtLeast(0f))
                 }, arrayOf(progress))
 
-                childrenOf(
-                    div(DivProps(
-                        style = styleOf {
-                            width = 100.percent
-                            height = 100.percent
-                            flexDirection.column()
-                            alignItems.center()
-                        },
-                        children = childrenOf(
-                            progressBar(ProgressBarProps(
-                                percentage = progress.toFloat(),
-                                fill = ItemStack(Material.WHITE_STAINED_GLASS),
-                                background = ItemStack(Material.RED_STAINED_GLASS),
-                            )),
-                            div(DivProps(
-                                style = styleOf {
-                                    width = 5.px
-                                    height = 1.px
-                                },
-                                background = ItemStack(Material.BAKED_POTATO),
-                            )),
-                            div(DivProps(
-                                style = styleOf {
-                                    width = 7.px
-                                    height = 1.px
-                                },
-                                background = ItemStack(Material.COOKIE),
-                            )),
-                            div(DivProps(
-                                style = styleOf {
-                                    width = 12.px
-                                    height = 1.px
-                                    flexGrow = 1f
-                                    flexDirection.row()
-                                    flexWrap.wrap()
-                                    alignItems.flexStart()
-                                    alignContent.flexStart()
-                                    justifyContent.flexEnd()
-                                },
-                                background = ItemStack(Material.BEEF),
-                                children = childrenOf(
-                                    +items.mapIndexed { index, item ->
-                                        div(DivProps(
-                                            style = styleOf {
-                                                width = 1.px
-                                                height = 1.px
-                                            },
-                                            background = item
-                                        ), key = index.toString())
-                                    }
-                                )
-                            )),
+                div(DivProps(
+                    style = styleOf {
+                        flexDirection.column()
+                        alignItems.center()
+                        justifyContent.spaceAround()
+                        width = 100.percent
+                        height = 100.percent
+                    },
+                    children = childrenOf(
+                        progressBar(ProgressBarProps(
+                            percentage = progress,
+                            background = ItemStack(Material.WHITE_STAINED_GLASS),
+                            fill = ItemStack(Material.GREEN_STAINED_GLASS)
+                        )),
+
+                        div(DivProps(
+                            style = styleOf {
+                                width = 3.px
+                                justifyContent.spaceBetween()
+                            },
+                            children = childrenOf(
+                                div(DivProps(
+                                    style = styleOf {
+                                        width = 1.px
+                                        height = 1.px
+                                    },
+                                    background = ItemStack(Material.GREEN_WOOL),
+                                    onClick = onIncreaseButtonClick,
+                                )),
+
+                                div(DivProps(
+                                    style = styleOf {
+                                        width = 1.px
+                                        height = 1.px
+                                    },
+                                    background = ItemStack(Material.RED_WOOL),
+                                    onClick = onDecreaseButtonClick,
+                                ))
+                            )
+                        )),
+
                         )
-                    ))
-                )
+                ))
             }
 
-            val ui = createUI(test, 9, 6, "test", true)
+            val ui = createUI(testApp, 9, 6, "test", true)
 
             if (sender is Player) {
                 ui.openInventory(sender)

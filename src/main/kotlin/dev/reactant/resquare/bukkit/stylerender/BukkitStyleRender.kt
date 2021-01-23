@@ -3,9 +3,9 @@ package dev.reactant.resquare.bukkit.stylerender
 import app.visly.stretch.Layout
 import app.visly.stretch.Node
 import app.visly.stretch.Size
-import dev.reactant.resquare.dom.Element
 import dev.reactant.resquare.elements.Body
 import dev.reactant.resquare.elements.Div
+import dev.reactant.resquare.elements.Element
 import dev.reactant.resquare.elements.styleOf
 
 object BukkitStyleRender {

@@ -1,5 +1,7 @@
 package dev.reactant.resquare.dom
 
+import dev.reactant.resquare.elements.Element
+
 sealed class Node {
     data class ElementNode(val raw: Element) : Node()
 
@@ -38,11 +40,6 @@ sealed class Node {
     data class ListNode(override val raw: List<Node>) : Node(), ListLikeNode
 
     object NullNode : Node()
-}
-
-interface Element {
-    val id: String
-    val children: List<Element>
 }
 
 // node creation dsl

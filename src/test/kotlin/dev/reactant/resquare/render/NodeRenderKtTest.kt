@@ -1,17 +1,27 @@
 package dev.reactant.resquare.render
 
-import dev.reactant.resquare.dom.Element
+import dev.reactant.resquare.dom.RootContainer
 import dev.reactant.resquare.dom.childrenOf
 import dev.reactant.resquare.dom.declareComponent
 import dev.reactant.resquare.dom.unaryPlus
 import dev.reactant.resquare.elements.Div
 import dev.reactant.resquare.elements.DivProps
+import dev.reactant.resquare.elements.Element
 import dev.reactant.resquare.elements.div
+import dev.reactant.resquare.testutils.TestRootContainerFactory
+import dev.reactant.resquare.testutils.TestRootContainerFactoryProvider
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ArgumentsSource
 
 internal class NodeRenderKtTest {
+
+    @AfterEach
+    fun cleanState() {
+        currentThreadNodeRenderState.remove()
+    }
 
     data class DivStructureAssertion(val expectedChildren: List<DivStructureAssertion> = listOf()) {
         fun assertStructureEquals(el: Element, path: String = "Expected: div") {
@@ -38,15 +48,14 @@ internal class NodeRenderKtTest {
         }
     }
 
-    @Test
-    fun render_withSimpleDiv_returnDivElement() {
+    @ParameterizedTest
+    @ArgumentsSource(TestRootContainerFactoryProvider::class)
+    fun render_withSimpleDiv_returnDivElement(rootContainerFactory: TestRootContainerFactory) {
         val test = declareComponent {
             +div()
         }
 
-        val actual = startRootNodeRenderState(NodeRenderState(null, "root")) {
-            renderNode(+test())
-        }
+        val actual = rootContainerFactory { +test() }.also(RootContainer::render).lastRenderResult!!.children
 
         val expected = DivStructureAssertion()
 
@@ -54,8 +63,9 @@ internal class NodeRenderKtTest {
         expected.assertStructureEquals(actual.first())
     }
 
-    @Test
-    fun render_withNestedDiv_returnNestedElement() {
+    @ParameterizedTest
+    @ArgumentsSource(TestRootContainerFactoryProvider::class)
+    fun render_withNestedDiv_returnNestedElement(rootContainerFactory: TestRootContainerFactory) {
         val test = declareComponent {
             +div(DivProps(
                 children = childrenOf(
@@ -73,9 +83,8 @@ internal class NodeRenderKtTest {
             ))
         }
 
-        val actual = startRootNodeRenderState(NodeRenderState(null, "root")) {
-            renderNode(+test())
-        }
+        val actual =
+            rootContainerFactory { +test() }.also(RootContainer::render).renderResultObservable.blockingFirst().children
 
         val expected = DivStructureAssertion.assertDiv {
             assertDiv {

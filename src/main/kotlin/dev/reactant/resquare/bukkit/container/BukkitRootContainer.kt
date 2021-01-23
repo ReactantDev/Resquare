@@ -8,6 +8,8 @@ import dev.reactant.resquare.dom.Node
 import dev.reactant.resquare.dom.RootContainer
 import dev.reactant.resquare.dom.unaryPlus
 import dev.reactant.resquare.elements.Body
+import dev.reactant.resquare.elements.Element
+import dev.reactant.resquare.render.NodeRenderState
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import org.bukkit.Bukkit
@@ -24,17 +26,24 @@ class BukkitRootContainer internal constructor(
      */
     val multiThread: Boolean = false
 ) : RootContainer() {
+    override val rootState: NodeRenderState = NodeRenderState(
+        parentState = null,
+        debugName = "root",
+        isDebug = ResquareBukkit.instance.isDebug,
+        logger = ResquareBukkit.instance.logger,
+        rootContainer = this,
+    )
     private val threadPool = if (multiThread) Executors.newFixedThreadPool(1) else null
     override val updateObservable: Observable<Boolean> =
         (if (!multiThread) rootState.updatesObservable.observeOn(ResquareBukkit.instance.mainThreadScheduler)
         else rootState.updatesObservable.observeOn(Schedulers.from(threadPool!!)))
-    private var destroed = false
+    private var destroyed = false
 
     val inventory = Bukkit.createInventory(null, width * height, title)
 
     val styleRenderResultObservable = renderResultObservable
         .observeOn(ResquareBukkit.instance.mainThreadScheduler)
-        .map { BukkitStyleRender.convertBodyToPixels(it as Body, width, height) }
+        .map { BukkitStyleRender.convertBodyToPixels(it as Body, width, height) }!!
 
     private var inventoryRendered = false
 
@@ -59,15 +68,21 @@ class BukkitRootContainer internal constructor(
     // TODO: AUTO dispose when no one watching it
 
     override fun destroy() {
-        updatesSubscription?.dispose()
+        super.destroy()
         styleRenderResultSubscription?.dispose()
-        rootState.unmount()
         threadPool?.shutdown()
-        destroed = true
+        destroyed = true
     }
 
     fun openInventory(entity: HumanEntity) {
         entity.openInventory(this.inventory)
+    }
+
+    internal fun getElementByRawSlot(rawSlot: Int): Element {
+        if (lastStyleRenderResult == null) throw IllegalStateException()
+        if (rawSlot >= width * height) return this
+        val position = rawSlot % width to rawSlot / width
+        return lastStyleRenderResult?.pixels?.get(position)?.element ?: this
     }
 }
 

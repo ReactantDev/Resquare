@@ -1,6 +1,6 @@
 package dev.reactant.resquare.bukkit.stylerender
 
-import dev.reactant.resquare.dom.Element
+import dev.reactant.resquare.elements.Element
 import org.bukkit.inventory.ItemStack
 
 data class BukkitInventoryPixel(

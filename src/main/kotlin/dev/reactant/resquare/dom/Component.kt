@@ -7,7 +7,7 @@ sealed class Component {
         override val name: String = "unnamed",
         private val content: (props: P) -> Node,
     ) : Component() {
-        operator fun invoke(props: P, key: String? = null): Node =
+        operator fun invoke(props: P, key: String? = null): Node.ComponentWithPropsNode<P> =
             Node.ComponentWithPropsNode(name, content, props, key, this)
     }
 
@@ -16,7 +16,7 @@ sealed class Component {
         val defaultPropsFactory: () -> P,
         private val content: (props: P) -> Node,
     ) : Component() {
-        operator fun invoke(props: P? = null, key: String? = null): Node =
+        operator fun invoke(props: P? = null, key: String? = null): Node.ComponentWithPropsNode<P> =
             Node.ComponentWithPropsNode(name, content, props ?: defaultPropsFactory(), key, this)
     }
 
@@ -24,7 +24,8 @@ sealed class Component {
         override val name: String = "unnamed",
         private val content: () -> Node,
     ) : Component() {
-        operator fun invoke(key: String? = null): Node = Node.ComponentWithoutPropsNode(name, content, key, this)
+        operator fun invoke(key: String? = null): Node.ComponentWithoutPropsNode =
+            Node.ComponentWithoutPropsNode(name, content, key, this)
     }
 }
 

@@ -1,9 +1,11 @@
 package dev.reactant.resquare.render
 
-private fun <T> claimState(initialValue: T) =
+import dev.reactant.resquare.dom.RootContainer
+
+internal fun <T> claimState(initialValue: T) =
     getCurrentThreadNodeRenderState().claimState(initialValue)
 
-private fun <T> claimStateLazy(initialValueFactory: () -> T) =
+internal fun <T> claimStateLazy(initialValueFactory: () -> T) =
     getCurrentThreadNodeRenderState().claimStateLazy(initialValueFactory)
 
 class StateAccessor<T>(
@@ -33,6 +35,8 @@ fun <T> useMemo(valueFactory: () -> T, deps: Array<Any?>): T {
     return getMemoValue()
 }
 
+fun <T> useCallback(callback: T, deps: Array<Any?>): T = useMemo({ callback }, deps)
+
 fun useEffect(effect: () -> (() -> Unit)?, deps: Array<Any?>? = null) {
     val (getPrevDeps, setPrevDeps) = claimState<Array<Any?>?>(null)
     val (getPrevEffectCleaner, setPrevEffectCleaner) = claimState<(() -> Unit)?>(null)
@@ -53,3 +57,5 @@ fun useEffect(effect: () -> (() -> Unit)?, deps: Array<Any?>? = null) {
         }
     }
 }
+
+fun useRootContainer(): RootContainer = getCurrentThreadNodeRenderState().rootContainer

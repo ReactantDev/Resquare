@@ -1,6 +1,6 @@
 package dev.reactant.resquare.bukkit.stylerender
 
-import dev.reactant.resquare.dom.Element
+import dev.reactant.resquare.elements.Element
 import kotlin.math.roundToInt
 
 data class BoundingRect<T : Number>(

@@ -3,9 +3,9 @@ package dev.reactant.resquare.bukkit.debugger.server.models
 import dev.reactant.resquare.bukkit.container.BukkitRootContainer
 import dev.reactant.resquare.bukkit.stylerender.BoundingRect
 import dev.reactant.resquare.bukkit.stylerender.BukkitStyleRenderResult
-import dev.reactant.resquare.dom.Element
 import dev.reactant.resquare.elements.Div
 import dev.reactant.resquare.elements.DivStyle
+import dev.reactant.resquare.elements.Element
 import org.bukkit.inventory.ItemStack
 
 data class DebuggerPixel(

@@ -2,8 +2,9 @@ package dev.reactant.resquare.render
 
 import dev.reactant.resquare.bukkit.ResquareBukkit
 import dev.reactant.resquare.dom.Component
-import dev.reactant.resquare.dom.Element
 import dev.reactant.resquare.dom.Node
+import dev.reactant.resquare.dom.RootContainer
+import dev.reactant.resquare.elements.Element
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -15,14 +16,16 @@ data class ScheduledStateUpdate<T>(val states: ArrayList<Any?>, val index: Int, 
     }
 }
 
-private val currentThreadNodeRenderState = ThreadLocal<NodeRenderState>()
+internal val currentThreadNodeRenderState = ThreadLocal<NodeRenderState>()
 internal const val resquarePreserveKeyPrefix = "dev.reactant.resquare:default_key_prefix_"
 
 class NodeRenderState(
     private val parentState: NodeRenderState?,
     debugName: String,
     val isDebug: Boolean = parentState?.isDebug ?: true,
-    val logger: Logger = parentState?.logger ?: Logger.getLogger("Resquare")
+    val logger: Logger = parentState?.logger ?: Logger.getLogger("Resquare"),
+    val rootContainer: RootContainer = parentState?.rootContainer
+        ?: throw IllegalArgumentException("Node render state must either provide parent state or root container"),
 ) {
     private var claimStateCount = 0
     private val states = ArrayList<Any?>()

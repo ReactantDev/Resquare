@@ -1,6 +1,6 @@
 package dev.reactant.resquare.bukkit.stylerender
 
-import dev.reactant.resquare.dom.Element
+import dev.reactant.resquare.elements.Element
 
 data class BukkitStyleRenderResult(
     val body: Element,
