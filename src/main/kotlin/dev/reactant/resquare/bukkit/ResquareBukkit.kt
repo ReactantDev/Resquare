@@ -10,8 +10,6 @@ class ResquareBukkit : JavaPlugin() {
         _instance = this
     }
 
-    val rootContainerController = BukkitRootContainerController()
-
     val isDebug = true
     private var isDisabled = false
     internal val uiUpdateMainThreadScheduler =
@@ -24,12 +22,12 @@ class ResquareBukkit : JavaPlugin() {
         @Suppress("UNUSED_VARIABLE")
         val metrics = Metrics(this, 10000)
 
-        rootContainerController.onEnable()
+        BukkitRootContainerController.onEnable()
     }
 
     override fun onDisable() {
         isDisabled = true
-        rootContainerController.onDisable()
+        BukkitRootContainerController.onDisable()
     }
 
     companion object {

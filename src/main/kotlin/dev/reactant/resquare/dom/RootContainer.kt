@@ -5,6 +5,9 @@ import dev.reactant.resquare.elements.Body
 import dev.reactant.resquare.elements.Element
 import dev.reactant.resquare.event.EventHandler
 import dev.reactant.resquare.event.ResquareEvent
+import dev.reactant.resquare.profiler.ProfilerDOMRenderTask
+import dev.reactant.resquare.profiler.ProfilerDOMRenderTaskIteration
+import dev.reactant.resquare.profiler.ProfilerDataChannel
 import dev.reactant.resquare.render.NodeRenderState
 import dev.reactant.resquare.render.renderNode
 import dev.reactant.resquare.render.startRootNodeRenderState
@@ -24,6 +27,7 @@ data class NodeRenderIterateInfo(
     val unreachedUpdatedNodeRenderState: HashSet<NodeRenderState>,
     val elementsUnreachedUpdatedNodeRenderStateMap: LinkedHashMap<Element, NodeRenderState>,
     val internalIterateCount: Int,
+    val profilerIterationData: ProfilerDOMRenderTaskIteration?,
 )
 
 abstract class RootContainer : BaseElement() {
@@ -55,21 +59,33 @@ abstract class RootContainer : BaseElement() {
 
     protected fun renderUpdates() {
         var committedScheduledUpdates: HashSet<NodeRenderState>? = null
+        val profilerDOMRenderTask = ProfilerDataChannel.profilerDataCollectMap[this]?.createDOMRenderTask()
+
         synchronized(rootState.scheduledUpdates) {
             if (rootState.scheduledUpdates.isEmpty()) return
+            profilerDOMRenderTask?.totalTimePeriod?.start()
             committedScheduledUpdates = rootState.scheduledUpdates.map { it.state }.toHashSet()
             rootState.scheduledUpdates.onEach { it.commit() }.clear()
         }
         synchronized(rootState.internalUpdates) {
-            render(committedScheduledUpdates = committedScheduledUpdates!!)
+            render(committedScheduledUpdates = committedScheduledUpdates!!,
+                profilerDOMRenderTask = profilerDOMRenderTask)
         }
+        profilerDOMRenderTask?.totalTimePeriod?.end()
     }
 
-    tailrec fun render(loopCount: Int = 0, committedScheduledUpdates: HashSet<NodeRenderState>? = null) {
+    tailrec fun render(
+        loopCount: Int = 0,
+        committedScheduledUpdates: HashSet<NodeRenderState>? = null,
+        profilerDOMRenderTask: ProfilerDOMRenderTask? = null
+    ) {
         if (loopCount > 0 && rootState.internalUpdates.isEmpty()) return
         if (loopCount > 20) throw IllegalStateException("render node loop count reach max: $loopCount, probably an infinity update loop")
         if (updatesSubscription == null) updatesSubscription = updateObservable.subscribe { renderUpdates() }
         assert(currentThreadNodeRenderCycleInfo.get() == null)
+
+        val profilerIterationData = profilerDOMRenderTask?.createIteration()
+        profilerIterationData?.totalTimePeriod?.start()
 
         val unreachedUpdatedNodeRenderState: HashSet<NodeRenderState> =
             committedScheduledUpdates ?: rootState.internalUpdates.map { it.state }.toHashSet()
@@ -84,6 +100,7 @@ abstract class RootContainer : BaseElement() {
             internalIterateCount = loopCount,
             unreachedUpdatedNodeRenderState = unreachedUpdatedNodeRenderState,
             elementsUnreachedUpdatedNodeRenderStateMap = elementsUnreachedUpdatedNodeRenderStateMap,
+            profilerIterationData = profilerIterationData
         ))
         val exception = runCatching {
             // TODO: FILTER ALL updated state element but NOT UNMOUNTED state node (rootSate = this.rootState)
@@ -94,7 +111,11 @@ abstract class RootContainer : BaseElement() {
             }))
         }.exceptionOrNull()
         currentThreadNodeRenderCycleInfo.remove()
-        if (exception != null) throw exception else render(loopCount + 1)
+
+        profilerIterationData?.totalTimePeriod?.end()
+
+        if (exception != null) throw exception else render(loopCount = loopCount + 1,
+            profilerDOMRenderTask = profilerDOMRenderTask)
     }
 
     override fun renderChildren() {

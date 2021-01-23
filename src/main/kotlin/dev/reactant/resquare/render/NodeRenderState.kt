@@ -4,10 +4,13 @@ import dev.reactant.resquare.bukkit.ResquareBukkit
 import dev.reactant.resquare.dom.Component
 import dev.reactant.resquare.dom.Node
 import dev.reactant.resquare.dom.RootContainer
+import dev.reactant.resquare.dom.currentThreadNodeRenderCycleInfo
 import dev.reactant.resquare.elements.Element
+import dev.reactant.resquare.profiler.TaskTimePeriod
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.Stack
+import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.logging.Logger
 
@@ -24,6 +27,7 @@ class NodeRenderState(
     val rootContainer: RootContainer = parentState?.rootContainer
         ?: throw IllegalArgumentException("Node render state must either provide parent state or root container"),
 ) {
+    val id = UUID.randomUUID().toString()
     var parentState: NodeRenderState? = parentState
         private set
 
@@ -170,7 +174,16 @@ internal fun runThreadSubNodeRender(
 
 fun startNodeRenderStateContent(nodeRenderState: NodeRenderState, content: () -> List<Element>): List<Element> {
     stateStack.get().push(nodeRenderState)
-    return runCatching { content().also { nodeRenderState.closeNodeState() } }
+    val taskTimePeriod = currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdTimePeriodMap?.put(
+        nodeRenderState.id,
+        TaskTimePeriod())
+    return runCatching {
+        taskTimePeriod?.start()
+        content().also {
+            nodeRenderState.closeNodeState()
+            taskTimePeriod?.end()
+        }
+    }
         .onSuccess { stateStack.get().pop() }
         .onFailure { stateStack.get().pop() }
         .getOrThrow()

@@ -1,5 +1,6 @@
 package dev.reactant.resquare.bukkit.container
 
+import dev.reactant.resquare.bukkit.BukkitRootContainerController
 import dev.reactant.resquare.bukkit.ResquareBukkit
 import dev.reactant.resquare.bukkit.stylerender.BukkitStyleRender
 import dev.reactant.resquare.bukkit.stylerender.BukkitStyleRenderResult
@@ -9,6 +10,7 @@ import dev.reactant.resquare.dom.RootContainer
 import dev.reactant.resquare.dom.unaryPlus
 import dev.reactant.resquare.elements.Body
 import dev.reactant.resquare.elements.Element
+import dev.reactant.resquare.event.ResquareCloseEvent
 import dev.reactant.resquare.render.NodeRenderState
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.schedulers.Schedulers
@@ -24,7 +26,8 @@ class BukkitRootContainer internal constructor(
     /**
      * True to enable multithreading rendering for update instead of running in main thread
      */
-    val multiThread: Boolean = false
+    val multiThread: Boolean = false,
+    val autoDestroy: Boolean = true,
 ) : RootContainer() {
     override val rootState: NodeRenderState = NodeRenderState(
         parentState = null,
@@ -63,15 +66,23 @@ class BukkitRootContainer internal constructor(
 
     init {
         render()
+        if (autoDestroy) {
+            addEventListener { e: ResquareCloseEvent ->
+                println("test")
+                this.destroy()
+            }
+        }
     }
 
     // TODO: AUTO dispose when no one watching it
 
     override fun destroy() {
+        if (destroyed) return
         super.destroy()
         styleRenderResultSubscription?.dispose()
         threadPool?.shutdown()
         destroyed = true
+        BukkitRootContainerController.removeRootContainer(this)
     }
 
     fun openInventory(entity: HumanEntity) {
@@ -94,6 +105,7 @@ fun createUI(
     /**
      * True to enable multithreading rendering for update instead of running in main thread
      */
-    multiThread: Boolean = false
-) = BukkitRootContainer({ +root() }, width, height, title, multiThread)
-    .also { ResquareBukkit.instance.rootContainerController.addRootContainer(it) }
+    multiThread: Boolean = false,
+    autoDestroy: Boolean = true,
+) = BukkitRootContainer({ +root() }, width, height, title, multiThread, autoDestroy)
+    .also { BukkitRootContainerController.addRootContainer(it) }
