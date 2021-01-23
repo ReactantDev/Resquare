@@ -11,7 +11,7 @@ private fun renderNode(
     key: String? = null,
     content: () -> List<Element>
 ): List<Element> {
-    return runThreadNodeRender(component, key) { nodeRenderState ->
+    return runThreadSubNodeRender(component, key) { nodeRenderState ->
         val result = if (nodeRenderState.lastRenderingNode === node) nodeRenderState.lastRenderedResult!! else content()
         nodeRenderState.lastRenderingNode = node
         nodeRenderState.lastRenderedResult = result

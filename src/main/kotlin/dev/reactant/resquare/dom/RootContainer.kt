@@ -13,6 +13,13 @@ import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import java.util.UUID
 
+internal val currentThreadNodeRenderCycleInfo = ThreadLocal<NodeRenderIterateInfo>()
+
+data class NodeRenderIterateInfo(
+    val reachedNodeRenderState: HashSet<NodeRenderState> = HashSet(),
+    val internalIterateCount: Int,
+)
+
 abstract class RootContainer : BaseElement() {
     override val id: String = UUID.randomUUID().toString()
     protected abstract val content: () -> Node
@@ -50,20 +57,23 @@ abstract class RootContainer : BaseElement() {
         }
     }
 
-    fun render() {
-        if (updatesSubscription == null) {
-            updatesSubscription = updateObservable.subscribe { renderUpdates() }
-        }
-        var loopCount = 0
-        while (loopCount == 0 || rootState.internalUpdates.isNotEmpty()) {
+    tailrec fun render(loopCount: Int = 0) {
+        if (loopCount > 0 && rootState.internalUpdates.isEmpty()) return
+        if (loopCount > 20) throw IllegalStateException("render node loop count reach max: $loopCount, probably an infinity update loop")
+        if (updatesSubscription == null) updatesSubscription = updateObservable.subscribe { renderUpdates() }
+
+        assert(currentThreadNodeRenderCycleInfo.get() == null)
+        currentThreadNodeRenderCycleInfo.set(NodeRenderIterateInfo(internalIterateCount = loopCount))
+        val success = runCatching {
+            // TODO: FILTER ALL updated state element but NOT UNMOUNTED state node (rootSate = this.rootState)
             rootState.internalUpdates.onEach { it.commit() }.clear()
-            if (loopCount > 20) throw IllegalStateException("render node loop count reach max: $loopCount, probably an infinity update loop")
             lastRenderResult?.let { (it as BaseElement).parent = null }
             renderResultSubject.onNext(bodyWrapper(startRootNodeRenderState(rootState) {
                 renderNode(content(), this)
             }))
-            loopCount++
-        }
+        }.isSuccess
+        currentThreadNodeRenderCycleInfo.remove()
+        if (!success) Unit else render(loopCount + 1)
     }
 
     override fun renderChildren() {

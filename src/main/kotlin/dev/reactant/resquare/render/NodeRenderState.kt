@@ -7,26 +7,36 @@ import dev.reactant.resquare.dom.RootContainer
 import dev.reactant.resquare.elements.Element
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
+import java.util.Stack
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.logging.Logger
 
-data class ScheduledStateUpdate<T>(val states: ArrayList<Any?>, val index: Int, val newValue: T) {
-    fun commit() {
-        states[index] = newValue
-    }
-}
+// TODO: Add Loop cycle state for profoling
+internal val stateStack = ThreadLocal<Stack<NodeRenderState>>()
 
-internal val currentThreadNodeRenderState = ThreadLocal<NodeRenderState>()
 internal const val resquarePreserveKeyPrefix = "dev.reactant.resquare:default_key_prefix_"
 
 class NodeRenderState(
-    private val parentState: NodeRenderState?,
+    parentState: NodeRenderState?,
     debugName: String,
     val isDebug: Boolean = parentState?.isDebug ?: true,
     val logger: Logger = parentState?.logger ?: Logger.getLogger("Resquare"),
     val rootContainer: RootContainer = parentState?.rootContainer
         ?: throw IllegalArgumentException("Node render state must either provide parent state or root container"),
 ) {
+    var parentState: NodeRenderState? = parentState
+        private set
+
+    data class ScheduledStateUpdate<T>(val state: NodeRenderState, val index: Int, val newValue: T) {
+        fun commit() {
+            state.states[index] = newValue
+        }
+    }
+
+    /**
+     * May not be root state after unmount
+     */
+    var topLevelState: NodeRenderState? = parentState?.topLevelState ?: this
     private var claimStateCount = 0
     private val states = ArrayList<Any?>()
     val debugPath: List<String> = parentState?.debugPath ?: listOf<String>() + debugName
@@ -57,10 +67,10 @@ class NodeRenderState(
 
         inner class StateScheduledUpdater<T : Any?> : (T) -> Unit {
             override fun invoke(value: T) {
-                if (currentThreadNodeRenderState.get()?.rootState == rootState) {
-                    internalUpdates.add(ScheduledStateUpdate(states, index, value))
+                if (stateStack.get()?.peek()?.rootState == rootState) {
+                    internalUpdates.add(ScheduledStateUpdate(this@NodeRenderState, index, value))
                 } else {
-                    scheduledUpdates.add(ScheduledStateUpdate(states, index, value))
+                    scheduledUpdates.add(ScheduledStateUpdate(this@NodeRenderState, index, value))
                     updateSubject.onNext(true)
                 }
             }
@@ -100,7 +110,7 @@ class NodeRenderState(
      * Create a sub node state or get from previous state if state key exist
      * return null if same state key exist
      */
-    fun runSubNodeState(component: Component?, key: String?): NodeRenderState? {
+    fun runSubNodeStateContent(component: Component?, key: String?, content: () -> List<Element>): List<Element> {
         if (key?.startsWith(resquarePreserveKeyPrefix) == true) {
             throw IllegalArgumentException("Key should not start with resquare reserved prefix: $resquarePreserveKeyPrefix")
         }
@@ -108,14 +118,15 @@ class NodeRenderState(
         val stateKey = component to (key ?: "$resquarePreserveKeyPrefix${currentReachedStateKeys.size}")
         if (currentReachedStateKeys.contains(stateKey)) {
             if (ResquareBukkit.instance.isDebug) logger.warning("Key conflict: Found exactly same key \"$key\"")
-            return null
+            return listOf()
         }
         currentReachedStateKeys.add(stateKey)
 
-        return subNodeRenderStates.getOrPut(stateKey) {
+        val subNodeState = subNodeRenderStates.getOrPut(stateKey) {
             NodeRenderState(this,
                 "${component?.name}#${currentReachedStateKeys.size - 1}")
-        }.also { currentThreadNodeRenderState.set(it) }
+        }
+        return startNodeRenderStateContent(subNodeState, content)
     }
 
     fun unmount() {
@@ -133,34 +144,42 @@ class NodeRenderState(
         effectsCleaners.onEach { it() }.clear()
         effects.onEach { it() }.clear()
         claimStateCount = 0
-        currentThreadNodeRenderState.set(this.parentState)
     }
 }
 
 internal fun getCurrentThreadNodeRenderState(): NodeRenderState =
-    currentThreadNodeRenderState.get()
+    stateStack.get().peek()
         ?: throw IllegalStateException("Not rendering, are you trying to call use hook outside component?")
 
-internal fun runThreadNodeRender(
+internal fun runThreadSubNodeRender(
     component: Component? = null,
     key: String? = null,
     content: (NodeRenderState) -> List<Element>
 ): List<Element> {
-    return getCurrentThreadNodeRenderState().runSubNodeState(component, key)?.let { nodeRenderState ->
-        content(nodeRenderState).also {
-            nodeRenderState.closeNodeState()
-        }
-    } ?: listOf()
+    return getCurrentThreadNodeRenderState().runSubNodeStateContent(component, key) {
+        content(getCurrentThreadNodeRenderState())
+    }
+}
+
+fun startNodeRenderStateContent(nodeRenderState: NodeRenderState, content: () -> List<Element>): List<Element> {
+    stateStack.get().push(nodeRenderState)
+    return runCatching { content().also { nodeRenderState.closeNodeState() } }
+        .onSuccess { stateStack.get().pop() }
+        .onFailure { stateStack.get().pop() }
+        .getOrThrow()
 }
 
 fun startRootNodeRenderState(
     rootNodeRenderState: NodeRenderState,
     content: () -> List<Element>
 ): List<Element> {
-    if (currentThreadNodeRenderState.get() != null) throw IllegalStateException("Cannot render another ui during ui rendering")
-    currentThreadNodeRenderState.set(rootNodeRenderState)
-    return content().also {
-        rootNodeRenderState.closeNodeState()
-        currentThreadNodeRenderState.remove()
-    }
+    if (stateStack.get() != null) throw IllegalStateException("Cannot render another ui during ui rendering")
+    stateStack.set(Stack())
+    return runCatching {
+        startNodeRenderStateContent(rootNodeRenderState, content)
+    }.onFailure {
+        stateStack.remove()
+    }.onSuccess {
+        stateStack.remove()
+    }.getOrThrow()
 }

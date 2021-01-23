@@ -9,17 +9,11 @@ import dev.reactant.resquare.elements.div
 import dev.reactant.resquare.elements.styleOf
 import dev.reactant.resquare.testutils.TestRootContainerFactory
 import dev.reactant.resquare.testutils.TestRootContainerFactoryProvider
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ArgumentsSource
 
 internal class HooksKtTest {
-
-    @AfterEach
-    fun cleanState() {
-        currentThreadNodeRenderState.remove()
-    }
 
     @ParameterizedTest
     @ArgumentsSource(TestRootContainerFactoryProvider::class)
