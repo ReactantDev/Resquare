@@ -8,10 +8,12 @@ import dev.reactant.resquare.elements.DivProps
 import dev.reactant.resquare.elements.div
 import dev.reactant.resquare.elements.styleOf
 import dev.reactant.resquare.event.ResquareClickEvent
+import dev.reactant.resquare.render.memo
 import dev.reactant.resquare.render.useCallback
 import dev.reactant.resquare.render.useEffect
 import dev.reactant.resquare.render.useRootContainer
 import dev.reactant.resquare.render.useState
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
@@ -40,7 +42,28 @@ class ResquareBukkitDebugger : JavaPlugin() {
                 val fill: ItemStack?,
             )
 
-            val progressBar = declareComponent { props: ProgressBarProps ->
+            val deco = declareComponent("deco") {
+                val (decoItem, setDecoItem) = useState(ItemStack(Material.CAKE))
+                useEffect({
+                    val task = Bukkit.getScheduler().runTaskTimer(ResquareBukkitDebugger.instance, Runnable {
+                        setDecoItem(ItemStack(Material.values().random()))
+                    }, 50, 50);
+                    {
+                        task.cancel()
+                    }
+                }, arrayOf())
+                div(DivProps(
+                    style = styleOf {
+                        width = 1.px
+                        height = 1.px
+                    },
+                    background = decoItem
+                ))
+            }
+
+            val memoDeco = memo(deco)
+
+            val progressBar = declareComponent("progressBar") { props: ProgressBarProps ->
 
                 div(DivProps(
                     style = styleOf {
@@ -54,13 +77,17 @@ class ResquareBukkitDebugger : JavaPlugin() {
                             style = styleOf {
                                 width = props.percentage.percent
                                 height = 1.px
+                                alignItems.flexEnd()
                             },
-                            background = props.fill
+                            background = props.fill,
+                            children = childrenOf(deco())
                         ))
 
                     )
                 ))
             }
+
+            val memoProgressBar = memo(progressBar)
 
             val testApp = declareComponent {
                 val (progress, setProgress) = useState(0f)
@@ -87,8 +114,14 @@ class ResquareBukkitDebugger : JavaPlugin() {
                         height = 100.percent
                     },
                     children = childrenOf(
-                        progressBar(ProgressBarProps(
+                        memoProgressBar(ProgressBarProps(
                             percentage = progress,
+                            background = ItemStack(Material.WHITE_STAINED_GLASS),
+                            fill = ItemStack(Material.GREEN_STAINED_GLASS)
+                        )),
+
+                        memoProgressBar(ProgressBarProps(
+                            percentage = 14.5f,
                             background = ItemStack(Material.WHITE_STAINED_GLASS),
                             fill = ItemStack(Material.GREEN_STAINED_GLASS)
                         )),

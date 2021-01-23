@@ -2,8 +2,50 @@ package dev.reactant.resquare.render
 
 import dev.reactant.resquare.dom.Component
 import dev.reactant.resquare.dom.Node
+import dev.reactant.resquare.dom.currentThreadNodeRenderCycleInfo
 import dev.reactant.resquare.elements.BaseElement
 import dev.reactant.resquare.elements.Element
+import java.util.LinkedList
+
+private fun recursiveDiffUpdateElementTree(
+    previousElements: List<Element>,
+): List<Element> {
+    data class NeedUpdateDiffSection(val fromIndex: Int, val count: Int, val belongsTo: NodeRenderState)
+
+    val cycleInfo = currentThreadNodeRenderCycleInfo.get()
+    val elementsUnreachedUpdatedNodeRenderStateMap = cycleInfo.elementsUnreachedUpdatedNodeRenderStateMap
+    val diffSections: ArrayList<NeedUpdateDiffSection> = ArrayList()
+    val diffElements = HashSet<Element>()
+    previousElements.forEachIndexed { index, element ->
+        if (!diffElements.contains(element) && elementsUnreachedUpdatedNodeRenderStateMap.containsKey(element)) {
+            val needUpdateNodeState = elementsUnreachedUpdatedNodeRenderStateMap[element]!!
+            diffSections.add(NeedUpdateDiffSection(fromIndex = index,
+                count = needUpdateNodeState.lastRenderedResult!!.size,
+                needUpdateNodeState))
+            diffElements.addAll(needUpdateNodeState.lastRenderedResult!!)
+        }
+    }
+
+    previousElements.filter { element -> !diffElements.contains(element) }
+        .map { it.partialUpdateChildren(recursiveDiffUpdateElementTree(it.children)) }
+
+    if (diffSections.size == 0) return previousElements
+
+    val newElements = LinkedList(previousElements)
+    var indexOffset = 0
+
+    diffSections.forEach { (fromIndex, count, belongsTo) ->
+        val replaceWithElements = startNodeRenderStateContent(belongsTo, belongsTo.lastRenderingContent!!)
+        belongsTo.lastRenderedResult = replaceWithElements
+        repeat(count) {
+            newElements.removeAt(fromIndex + indexOffset)
+        }
+        newElements.addAll(fromIndex, replaceWithElements)
+        indexOffset += replaceWithElements.size - count
+    }
+
+    return newElements
+}
 
 private fun renderNode(
     node: Node? = null,
@@ -12,9 +54,28 @@ private fun renderNode(
     content: () -> List<Element>
 ): List<Element> {
     return runThreadSubNodeRender(component, key) { nodeRenderState ->
-        val result = if (nodeRenderState.lastRenderingNode === node) nodeRenderState.lastRenderedResult!! else content()
+        val isUpdatedNode =
+            currentThreadNodeRenderCycleInfo.get().unreachedUpdatedNodeRenderState.contains(nodeRenderState)
+        val needRender = nodeRenderState.lastRenderingNode !== node || isUpdatedNode
+
+        val result = if (needRender) {
+            nodeRenderState.lastRenderingContent = content
+            content()
+        } else {
+            nodeRenderState.currentReachedStateKeys.addAll(nodeRenderState.subNodeRenderStates.keys)
+            recursiveDiffUpdateElementTree(nodeRenderState.lastRenderedResult!!)
+        }
+
+        if (isUpdatedNode) {
+            currentThreadNodeRenderCycleInfo.get().let { info ->
+                info.unreachedUpdatedNodeRenderState.remove(nodeRenderState)
+                nodeRenderState.lastRenderedResult!!.forEach { info.elementsUnreachedUpdatedNodeRenderStateMap.remove(it) }
+            }
+        }
+
         nodeRenderState.lastRenderingNode = node
         nodeRenderState.lastRenderedResult = result
+
         result
     }
 }

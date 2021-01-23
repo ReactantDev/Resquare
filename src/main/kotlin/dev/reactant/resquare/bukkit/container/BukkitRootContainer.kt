@@ -35,14 +35,14 @@ class BukkitRootContainer internal constructor(
     )
     private val threadPool = if (multiThread) Executors.newFixedThreadPool(1) else null
     override val updateObservable: Observable<Boolean> =
-        (if (!multiThread) rootState.updatesObservable.observeOn(ResquareBukkit.instance.mainThreadScheduler)
+        (if (!multiThread) rootState.updatesObservable.observeOn(ResquareBukkit.instance.uiUpdateMainThreadScheduler)
         else rootState.updatesObservable.observeOn(Schedulers.from(threadPool!!)))
     private var destroyed = false
 
     val inventory = Bukkit.createInventory(null, width * height, title)
 
     val styleRenderResultObservable = renderResultObservable
-        .observeOn(ResquareBukkit.instance.mainThreadScheduler)
+        .observeOn(ResquareBukkit.instance.uiUpdateMainThreadScheduler)
         .map { BukkitStyleRender.convertBodyToPixels(it as Body, width, height) }!!
 
     private var inventoryRendered = false

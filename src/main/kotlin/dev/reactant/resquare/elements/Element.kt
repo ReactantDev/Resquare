@@ -7,4 +7,10 @@ interface Element : EventTarget {
     val children: List<Element>
     val parent: Element?
     fun renderChildren()
+
+    /**
+     * For partial diff update nested element inside memo component
+     * Should not be called directly
+     */
+    fun partialUpdateChildren(newChildren: List<Element>)
 }

@@ -16,7 +16,13 @@ import java.util.UUID
 internal val currentThreadNodeRenderCycleInfo = ThreadLocal<NodeRenderIterateInfo>()
 
 data class NodeRenderIterateInfo(
+    // for analyze
     val reachedNodeRenderState: HashSet<NodeRenderState> = HashSet(),
+    /**
+     * Need to check is these node state rerendered if under memo
+     */
+    val unreachedUpdatedNodeRenderState: HashSet<NodeRenderState>,
+    val elementsUnreachedUpdatedNodeRenderStateMap: LinkedHashMap<Element, NodeRenderState>,
     val internalIterateCount: Int,
 )
 
@@ -48,32 +54,47 @@ abstract class RootContainer : BaseElement() {
     }
 
     protected fun renderUpdates() {
+        var committedScheduledUpdates: HashSet<NodeRenderState>? = null
         synchronized(rootState.scheduledUpdates) {
             if (rootState.scheduledUpdates.isEmpty()) return
+            committedScheduledUpdates = rootState.scheduledUpdates.map { it.state }.toHashSet()
             rootState.scheduledUpdates.onEach { it.commit() }.clear()
         }
         synchronized(rootState.internalUpdates) {
-            render()
+            render(committedScheduledUpdates = committedScheduledUpdates!!)
         }
     }
 
-    tailrec fun render(loopCount: Int = 0) {
+    tailrec fun render(loopCount: Int = 0, committedScheduledUpdates: HashSet<NodeRenderState>? = null) {
         if (loopCount > 0 && rootState.internalUpdates.isEmpty()) return
         if (loopCount > 20) throw IllegalStateException("render node loop count reach max: $loopCount, probably an infinity update loop")
         if (updatesSubscription == null) updatesSubscription = updateObservable.subscribe { renderUpdates() }
-
         assert(currentThreadNodeRenderCycleInfo.get() == null)
-        currentThreadNodeRenderCycleInfo.set(NodeRenderIterateInfo(internalIterateCount = loopCount))
-        val success = runCatching {
+
+        val unreachedUpdatedNodeRenderState: HashSet<NodeRenderState> =
+            committedScheduledUpdates ?: rootState.internalUpdates.map { it.state }.toHashSet()
+        val elementsUnreachedUpdatedNodeRenderStateMap: LinkedHashMap<Element, NodeRenderState> = LinkedHashMap()
+        unreachedUpdatedNodeRenderState.forEach { state ->
+            state.lastRenderedResult!!.forEach { element ->
+                elementsUnreachedUpdatedNodeRenderStateMap[element] = state
+            }
+        }
+
+        currentThreadNodeRenderCycleInfo.set(NodeRenderIterateInfo(
+            internalIterateCount = loopCount,
+            unreachedUpdatedNodeRenderState = unreachedUpdatedNodeRenderState,
+            elementsUnreachedUpdatedNodeRenderStateMap = elementsUnreachedUpdatedNodeRenderStateMap,
+        ))
+        val exception = runCatching {
             // TODO: FILTER ALL updated state element but NOT UNMOUNTED state node (rootSate = this.rootState)
             rootState.internalUpdates.onEach { it.commit() }.clear()
             lastRenderResult?.let { (it as BaseElement).parent = null }
             renderResultSubject.onNext(bodyWrapper(startRootNodeRenderState(rootState) {
                 renderNode(content(), this)
             }))
-        }.isSuccess
+        }.exceptionOrNull()
         currentThreadNodeRenderCycleInfo.remove()
-        if (!success) Unit else render(loopCount + 1)
+        if (exception != null) throw exception else render(loopCount + 1)
     }
 
     override fun renderChildren() {
@@ -115,4 +136,6 @@ abstract class RootContainer : BaseElement() {
         capture: Boolean,
         noinline handler: EventHandler<T>,
     ) = removeEventListener(T::class.java, capture, handler)
+
+    override fun partialUpdateChildren(newChildren: List<Element>) = throw java.lang.UnsupportedOperationException()
 }

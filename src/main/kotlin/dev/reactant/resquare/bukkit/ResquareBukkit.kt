@@ -13,8 +13,12 @@ class ResquareBukkit : JavaPlugin() {
     val rootContainerController = BukkitRootContainerController()
 
     val isDebug = true
-    internal val mainThreadScheduler =
-        Schedulers.from { content: Runnable -> Bukkit.getServer().scheduler.runTask(this, content) }
+    private var isDisabled = false
+    internal val uiUpdateMainThreadScheduler =
+        Schedulers.from { content: Runnable ->
+            if (isDisabled) Unit else Bukkit.getServer().scheduler.runTask(this,
+                content)
+        }
 
     override fun onEnable() {
         @Suppress("UNUSED_VARIABLE")
@@ -24,6 +28,7 @@ class ResquareBukkit : JavaPlugin() {
     }
 
     override fun onDisable() {
+        isDisabled = true
         rootContainerController.onDisable()
     }
 

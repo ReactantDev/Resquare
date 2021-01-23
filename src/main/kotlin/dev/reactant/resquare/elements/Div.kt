@@ -27,6 +27,10 @@ class Div(val props: DivProps) : BaseElement() {
         children = renderNode(props.children, parent ?: throw IllegalStateException("Cannot render without parent"))
     }
 
+    override fun partialUpdateChildren(newChildren: List<Element>) {
+        children = newChildren
+    }
+
     init {
         if (props.onClick != null) {
             this._eventHandlers.getOrPut(ResquareClickEvent::class.java) { LinkedHashSet() }

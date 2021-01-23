@@ -12,4 +12,6 @@ open class Body(override val children: List<Element>, parent: RootContainer) : B
     override fun renderChildren() {
         throw UnsupportedOperationException("Body should be render by assign children")
     }
+
+    override fun partialUpdateChildren(newChildren: List<Element>) = throw java.lang.UnsupportedOperationException()
 }

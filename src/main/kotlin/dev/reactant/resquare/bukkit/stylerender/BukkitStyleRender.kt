@@ -81,15 +81,16 @@ object BukkitStyleRender {
         val bodyNode = convertElementToStretchNode(body)
         val bodyLayout = bodyNode.computeLayout(Size(containerWidth.toFloat(), containerHeight.toFloat()))
 
-        fun convertToBoundingRect(node: Node, nodeLayout: Layout, parentLayout: Layout?) {
+        fun convertToBoundingRect(node: Node, nodeLayout: Layout, parentBoundingRect: BoundingRect<Float>?) {
             val el = nodeElMap[node]!!
-            BoundingRect(
-                x = nodeLayout.x + (parentLayout?.x ?: 0f),
-                y = nodeLayout.y + (parentLayout?.y ?: 0f),
+            val boundingRect = BoundingRect(
+                x = nodeLayout.x + (parentBoundingRect?.x ?: 0f),
+                y = nodeLayout.y + (parentBoundingRect?.y ?: 0f),
                 width = nodeLayout.width,
                 height = nodeLayout.height,
                 element = el,
-            ).let { accurate ->
+            )
+            boundingRect.let { accurate ->
                 elementAccurateBoundingRectMap[el] = accurate
 
                 accurate.pixelated().let { pixelated ->
@@ -97,7 +98,7 @@ object BukkitStyleRender {
                 }
             }
             node.getChildren().forEachIndexed { index, _ ->
-                convertToBoundingRect(node.getChildren()[index], nodeLayout.children[index], nodeLayout)
+                convertToBoundingRect(node.getChildren()[index], nodeLayout.children[index], boundingRect)
             }
         }
 

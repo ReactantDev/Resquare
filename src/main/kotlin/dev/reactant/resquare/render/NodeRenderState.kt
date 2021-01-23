@@ -55,10 +55,15 @@ class NodeRenderState(
      * Return lastRenderedResult is the node is "reference equal"
      */
     internal var lastRenderingNode: Node? = null
+
+    /**
+     * Reuse the content in case its parent didn't update but this node need update
+     */
+    internal var lastRenderingContent: (() -> List<Element>)? = null
     internal var lastRenderedResult: List<Element>? = null
 
-    private val subNodeRenderStates = HashMap<Pair<Component?, String>, NodeRenderState>()
-    private val currentReachedStateKeys = HashSet<Pair<Component?, String>>()
+    internal val subNodeRenderStates = HashMap<Pair<Component?, String>, NodeRenderState>()
+    internal val currentReachedStateKeys = HashSet<Pair<Component?, String>>()
 
     inner class StateUpdater<T : Any?>(val index: Int) : (T) -> Unit {
         override fun invoke(value: T) {
@@ -136,6 +141,8 @@ class NodeRenderState(
     }
 
     fun closeNodeState() {
+        // PROBABLY need to add memoed state into current reached state keys!!!!! memo
+        // or they will got unmount!!!!, because they didn't each!!!!, check node render
         subNodeRenderStates.keys.filter { !currentReachedStateKeys.contains(it) }.forEach {
             subNodeRenderStates.remove(it)!!.unmount()
         }
