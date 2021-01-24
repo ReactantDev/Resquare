@@ -21,7 +21,7 @@ internal const val resquarePreserveKeyPrefix = "dev.reactant.resquare:default_ke
 
 class NodeRenderState(
     parentState: NodeRenderState?,
-    debugName: String,
+    val debugName: String,
     val isDebug: Boolean = parentState?.isDebug ?: true,
     val logger: Logger = parentState?.logger ?: Logger.getLogger("Resquare"),
     val rootContainer: RootContainer = parentState?.rootContainer
@@ -174,9 +174,9 @@ internal fun runThreadSubNodeRender(
 
 fun startNodeRenderStateContent(nodeRenderState: NodeRenderState, content: () -> List<Element>): List<Element> {
     stateStack.get().push(nodeRenderState)
-    val taskTimePeriod = currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdTimePeriodMap?.put(
-        nodeRenderState.id,
-        TaskTimePeriod())
+    val taskTimePeriod = currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdTimePeriodMap?.let {
+        TaskTimePeriod().also { period -> it.put(nodeRenderState.id, period) }
+    }
     return runCatching {
         taskTimePeriod?.start()
         content().also {

@@ -10,7 +10,7 @@ fun parseDebugInput(raw: String): RemoteInput<*> {
     val type = RemoteInputType.valueOf(rawObject.get("type").asString)
     val data = rawObject.get("data")
     val typeToken: TypeToken<*> = when (type) {
-        RemoteInputType.ProfilingStart -> object : TypeToken<RemoteInput<String>>() {}
+        RemoteInputType.ProfilingStart -> object : TypeToken<RemoteInput<Any>>() {}
         RemoteInputType.ProfilingStop -> object : TypeToken<RemoteInput<Any>>() {}
         RemoteInputType.RenderingInspectStart -> object : TypeToken<RemoteInput<String>>() {}
         RemoteInputType.RenderingInspectStop -> object : TypeToken<RemoteInput<String>>() {}

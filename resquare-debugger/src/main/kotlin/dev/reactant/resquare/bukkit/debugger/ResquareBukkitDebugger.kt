@@ -47,7 +47,7 @@ class ResquareBukkitDebugger : JavaPlugin() {
                 useEffect({
                     val task = Bukkit.getScheduler().runTaskTimer(ResquareBukkitDebugger.instance, Runnable {
                         setDecoItem(ItemStack(Material.values().random()))
-                    }, 50, 50);
+                    }, 20, 20);
                     {
                         task.cancel()
                     }
@@ -80,7 +80,7 @@ class ResquareBukkitDebugger : JavaPlugin() {
                                 alignItems.flexEnd()
                             },
                             background = props.fill,
-                            children = childrenOf(deco())
+                            children = childrenOf(memoDeco())
                         ))
 
                     )
@@ -121,7 +121,19 @@ class ResquareBukkitDebugger : JavaPlugin() {
                         )),
 
                         memoProgressBar(ProgressBarProps(
+                            percentage = progress,
+                            background = ItemStack(Material.WHITE_STAINED_GLASS),
+                            fill = ItemStack(Material.GREEN_STAINED_GLASS)
+                        )),
+
+                        memoProgressBar(ProgressBarProps(
                             percentage = 14.5f,
+                            background = ItemStack(Material.WHITE_STAINED_GLASS),
+                            fill = ItemStack(Material.GREEN_STAINED_GLASS)
+                        )),
+
+                        memoProgressBar(ProgressBarProps(
+                            percentage = progress,
                             background = ItemStack(Material.WHITE_STAINED_GLASS),
                             fill = ItemStack(Material.GREEN_STAINED_GLASS)
                         )),

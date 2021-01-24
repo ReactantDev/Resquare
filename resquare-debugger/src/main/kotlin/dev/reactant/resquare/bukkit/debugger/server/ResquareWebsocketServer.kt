@@ -5,8 +5,8 @@ import com.google.gson.reflect.TypeToken
 import dev.reactant.resquare.bukkit.BukkitRootContainerController
 import dev.reactant.resquare.bukkit.container.BukkitRootContainer
 import dev.reactant.resquare.bukkit.debugger.server.models.DebuggerRootContainer
-import dev.reactant.resquare.profiler.ProfilerData
 import dev.reactant.resquare.profiler.ProfilerDataChannel
+import dev.reactant.resquare.profiler.ProfilerResult
 import io.ktor.application.install
 import io.ktor.http.cio.websocket.Frame
 import io.ktor.http.cio.websocket.readText
@@ -94,16 +94,16 @@ object ResquareWebsocketServer {
                         val rawInput = (incoming.receive() as Frame.Text).readText()
                         parseDebugInput(rawInput).let { remoteInput ->
                             when (remoteInput.type) {
-                                RemoteInputType.ProfilingStart -> ProfilerDataChannel.startProfiling(remoteInput.data as String)
+                                RemoteInputType.ProfilingStart -> ProfilerDataChannel.startProfiling()
                                 RemoteInputType.ProfilingStop -> {
-                                    ProfilerDataChannel.stopProfiling(remoteInput.data as String)?.let {
+                                    ProfilerDataChannel.stopProfiling().let {
                                         send(Frame.Text(gson.toJson(
                                             RemoteOutput(
                                                 type = RemoteOutputType.ProfilingResult,
                                                 data = it
                                             ),
                                             object :
-                                                TypeToken<RemoteOutput<ProfilerData>>() {}.type
+                                                TypeToken<RemoteOutput<ProfilerResult>>() {}.type
                                         )))
                                     }
                                 }
@@ -135,6 +135,9 @@ object ResquareWebsocketServer {
                         }
                     }
                 } catch (e: ClosedReceiveChannelException) {
+                    if (ProfilerDataChannel.currentProfilerResult != null) {
+                        ProfilerDataChannel.stopProfiling()
+                    }
                 } catch (e: Throwable) {
                     e.printStackTrace()
                 }

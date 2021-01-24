@@ -11,6 +11,7 @@ import dev.reactant.resquare.dom.unaryPlus
 import dev.reactant.resquare.elements.Body
 import dev.reactant.resquare.elements.Element
 import dev.reactant.resquare.event.ResquareCloseEvent
+import dev.reactant.resquare.profiler.ProfilerDataChannel
 import dev.reactant.resquare.render.NodeRenderState
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.schedulers.Schedulers
@@ -65,7 +66,10 @@ class BukkitRootContainer internal constructor(
     }
 
     init {
-        render()
+        val profilerDOMRenderTask = ProfilerDataChannel.currentProfilerResult?.createDOMRenderTask(this)
+        profilerDOMRenderTask?.totalTimePeriod?.start()
+        render(profilerDOMRenderTask = profilerDOMRenderTask)
+        profilerDOMRenderTask?.totalTimePeriod?.end()
         if (autoDestroy) {
             addEventListener { e: ResquareCloseEvent ->
                 println("test")

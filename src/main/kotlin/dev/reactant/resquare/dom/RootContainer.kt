@@ -8,6 +8,7 @@ import dev.reactant.resquare.event.ResquareEvent
 import dev.reactant.resquare.profiler.ProfilerDOMRenderTask
 import dev.reactant.resquare.profiler.ProfilerDOMRenderTaskIteration
 import dev.reactant.resquare.profiler.ProfilerDataChannel
+import dev.reactant.resquare.profiler.ProfilerNodeRenderState
 import dev.reactant.resquare.render.NodeRenderState
 import dev.reactant.resquare.render.renderNode
 import dev.reactant.resquare.render.startRootNodeRenderState
@@ -59,10 +60,11 @@ abstract class RootContainer : BaseElement() {
 
     protected fun renderUpdates() {
         var committedScheduledUpdates: HashSet<NodeRenderState>? = null
-        val profilerDOMRenderTask = ProfilerDataChannel.profilerDataCollectMap[this]?.createDOMRenderTask()
+        var profilerDOMRenderTask: ProfilerDOMRenderTask?
 
         synchronized(rootState.scheduledUpdates) {
             if (rootState.scheduledUpdates.isEmpty()) return
+            profilerDOMRenderTask = ProfilerDataChannel.currentProfilerResult?.createDOMRenderTask(this)
             profilerDOMRenderTask?.totalTimePeriod?.start()
             committedScheduledUpdates = rootState.scheduledUpdates.map { it.state }.toHashSet()
             rootState.scheduledUpdates.onEach { it.commit() }.clear()
@@ -112,6 +114,7 @@ abstract class RootContainer : BaseElement() {
         }.exceptionOrNull()
         currentThreadNodeRenderCycleInfo.remove()
 
+        profilerIterationData?.profilerNodeRenderState = ProfilerNodeRenderState.from(rootState)
         profilerIterationData?.totalTimePeriod?.end()
 
         if (exception != null) throw exception else render(loopCount = loopCount + 1,

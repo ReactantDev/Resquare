@@ -1,10 +1,8 @@
 package dev.reactant.resquare.profiler
 
-import dev.reactant.resquare.bukkit.BukkitRootContainerController
+import dev.reactant.resquare.bukkit.container.BukkitRootContainer
 import dev.reactant.resquare.dom.RootContainer
 import dev.reactant.resquare.render.NodeRenderState
-import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 
 interface ProfilerRenderTask {
     val totalTimePeriod: TaskTimePeriod
@@ -12,60 +10,94 @@ interface ProfilerRenderTask {
 }
 
 data class TaskTimePeriod(
-    var startTime: String? = null,
-    var endTime: String? = null,
+    var startTime: Long? = null,
+    var endTime: Long? = null,
 ) {
     fun start() {
-        this.startTime = Instant.now().toString()
+        this.startTime = System.nanoTime()
     }
 
     fun end() {
-        this.endTime = Instant.now().toString()
+        this.endTime = System.nanoTime()
     }
 }
 
 data class ProfilerNodeRenderState(
     val id: String,
-    val subNodeRenderStates: List<NodeRenderState>
-)
+    val name: String,
+    val subNodeRenderStates: List<ProfilerNodeRenderState>
+) {
+    companion object {
+        fun from(nodeRenderState: NodeRenderState): ProfilerNodeRenderState =
+            ProfilerNodeRenderState(
+                nodeRenderState.id,
+                nodeRenderState.debugName,
+                nodeRenderState.subNodeRenderStates.values.map(::from)
+            )
+    }
+}
 
 data class ProfilerDOMRenderTaskIteration(
     val totalTimePeriod: TaskTimePeriod = TaskTimePeriod(),
     val nodeStateIdTimePeriodMap: HashMap<String, TaskTimePeriod> = HashMap(),
-    val profilerNodeRenderState: ProfilerNodeRenderState? = null,
+    var profilerNodeRenderState: ProfilerNodeRenderState? = null,
 )
+
+data class RootContainerInfo(
+    val title: String?,
+    val viewer: List<String>,
+    val width: Int,
+    val height: Int,
+    val multithread: Boolean,
+) {
+    companion object {
+        fun from(rootContainer: BukkitRootContainer) = RootContainerInfo(
+            rootContainer.title,
+            rootContainer.inventory.viewers.map { it.name },
+            rootContainer.width,
+            rootContainer.height,
+            rootContainer.multiThread,
+        )
+    }
+}
 
 data class ProfilerDOMRenderTask(
     val iterations: ArrayList<ProfilerDOMRenderTaskIteration> = ArrayList(),
     override val totalTimePeriod: TaskTimePeriod = TaskTimePeriod(),
-    override val threadName: String
+    override val threadName: String,
+    val rootContainerInfo: RootContainerInfo,
 ) : ProfilerRenderTask {
+    val type = "DOMRenderTask"
     fun createIteration() = ProfilerDOMRenderTaskIteration().also { iterations.add(it) }
 }
 
-data class ProfilerData(
-    val domRenderTasks: ArrayList<ProfilerDOMRenderTask> = ArrayList()
+data class ProfilerResult(
+    val domRenderTasks: ArrayList<ProfilerDOMRenderTask> = ArrayList(),
+    val totalTimePeriod: TaskTimePeriod = TaskTimePeriod(),
 ) {
-    fun createDOMRenderTask() =
-        ProfilerDOMRenderTask(threadName = Thread.currentThread().name).also { domRenderTasks.add(it) }
+    fun createDOMRenderTask(rootContainer: RootContainer) =
+        ProfilerDOMRenderTask(threadName = Thread.currentThread().name,
+            rootContainerInfo = RootContainerInfo.from(rootContainer as BukkitRootContainer)
+        ).also {
+            synchronized(domRenderTasks) {
+                domRenderTasks.add(it)
+            }
+        }
 }
 
 object ProfilerDataChannel {
-    val profilerDataCollectMap = ConcurrentHashMap<RootContainer, ProfilerData>()
-    fun startProfiling(rootContainerId: String): Boolean {
-        val rootContainer = BukkitRootContainerController.getRootContainerById(rootContainerId) ?: return false
-        if (!profilerDataCollectMap.contains(rootContainer)) {
-            this.profilerDataCollectMap[rootContainer] = ProfilerData()
-        } else {
-            throw IllegalStateException()
-        }
-        return true
+    var currentProfilerResult: ProfilerResult? = null
+
+    fun startProfiling() {
+        assert(currentProfilerResult == null)
+        this.currentProfilerResult = ProfilerResult().also { it.totalTimePeriod.start() }
     }
 
-    fun stopProfiling(rootContainerId: String): ProfilerData? {
-        val rootContainer = BukkitRootContainerController.getRootContainerById(rootContainerId)
-        if (rootContainer == null) throw IllegalArgumentException()
-        if (!profilerDataCollectMap.contains(rootContainer)) throw IllegalStateException()
-        return profilerDataCollectMap[rootContainer]
+    fun stopProfiling(): ProfilerResult {
+        assert(currentProfilerResult != null)
+        return this.currentProfilerResult!!.also {
+            it.totalTimePeriod.end()
+            this.currentProfilerResult = null
+        }
     }
 }
