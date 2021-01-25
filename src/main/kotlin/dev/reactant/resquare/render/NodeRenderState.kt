@@ -119,7 +119,7 @@ class NodeRenderState(
      * Create a sub node state or get from previous state if state key exist
      * return null if same state key exist
      */
-    fun runSubNodeStateContent(component: Component?, key: String?, content: () -> List<Element>): List<Element> {
+    fun runSubNodeStateContent(component: Component?, key: String?, debugName: String, content: () -> List<Element>): List<Element> {
         if (key?.startsWith(resquarePreserveKeyPrefix) == true) {
             throw IllegalArgumentException("Key should not start with resquare reserved prefix: $resquarePreserveKeyPrefix")
         }
@@ -133,9 +133,9 @@ class NodeRenderState(
 
         val subNodeState = subNodeRenderStates.getOrPut(stateKey) {
             NodeRenderState(this,
-                "${component?.name}#${currentReachedStateKeys.size - 1}")
+                "$debugName#${currentReachedStateKeys.size - 1}")
         }
-        return startNodeRenderStateContent(subNodeState, content)
+        return startNodeRenderStateContent(subNodeState, true, content)
     }
 
     fun unmount() {
@@ -144,11 +144,12 @@ class NodeRenderState(
         this.unmountCallbacks.clear()
     }
 
-    fun closeNodeState() {
-        // PROBABLY need to add memoed state into current reached state keys!!!!! memo
-        // or they will got unmount!!!!, because they didn't each!!!!, check node render
-        subNodeRenderStates.keys.filter { !currentReachedStateKeys.contains(it) }.forEach {
-            subNodeRenderStates.remove(it)!!.unmount()
+    fun closeNodeState(unmountUnreachedNode: Boolean = true) {
+        if (unmountUnreachedNode) {
+            subNodeRenderStates.keys.filter { !currentReachedStateKeys.contains(it) }.forEach {
+                subNodeRenderStates.remove(it)!!.unmount()
+                println("unmount $unmountUnreachedNode $it")
+            }
         }
 
         currentReachedStateKeys.clear()
@@ -163,16 +164,17 @@ internal fun getCurrentThreadNodeRenderState(): NodeRenderState =
         ?: throw IllegalStateException("Not rendering, are you trying to call use hook outside component?")
 
 internal fun runThreadSubNodeRender(
+    debugName: String,
     component: Component? = null,
     key: String? = null,
     content: (NodeRenderState) -> List<Element>
 ): List<Element> {
-    return getCurrentThreadNodeRenderState().runSubNodeStateContent(component, key) {
+    return getCurrentThreadNodeRenderState().runSubNodeStateContent(component, key, debugName) {
         content(getCurrentThreadNodeRenderState())
     }
 }
 
-fun startNodeRenderStateContent(nodeRenderState: NodeRenderState, content: () -> List<Element>): List<Element> {
+fun startNodeRenderStateContent(nodeRenderState: NodeRenderState, unmountUnreachedNode: Boolean = true, content: () -> List<Element>): List<Element> {
     stateStack.get().push(nodeRenderState)
     val taskTimePeriod = currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdTimePeriodMap?.let {
         TaskTimePeriod().also { period -> it.put(nodeRenderState.id, period) }
@@ -180,7 +182,7 @@ fun startNodeRenderStateContent(nodeRenderState: NodeRenderState, content: () ->
     return runCatching {
         taskTimePeriod?.start()
         content().also {
-            nodeRenderState.closeNodeState()
+            nodeRenderState.closeNodeState(unmountUnreachedNode)
             taskTimePeriod?.end()
         }
     }
@@ -196,7 +198,7 @@ fun startRootNodeRenderState(
     if (stateStack.get() != null) throw IllegalStateException("Cannot render another ui during ui rendering")
     stateStack.set(Stack())
     return runCatching {
-        startNodeRenderStateContent(rootNodeRenderState, content)
+        startNodeRenderStateContent(rootNodeRenderState, true, content)
     }.onFailure {
         stateStack.remove()
     }.onSuccess {

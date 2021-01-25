@@ -48,7 +48,7 @@ internal class NodeRenderKtTest {
             +div()
         }
 
-        val actual = rootContainerFactory { +test() }.also(RootContainer::render).lastRenderResult!!.children
+        val actual = rootContainerFactory { +test() }.also(RootContainer::renderIteration).lastRenderResult!!.children
 
         val expected = DivStructureAssertion()
 
@@ -77,7 +77,7 @@ internal class NodeRenderKtTest {
         }
 
         val actual =
-            rootContainerFactory { +test() }.also(RootContainer::render).renderResultObservable.blockingFirst().children
+            rootContainerFactory { +test() }.also(RootContainer::renderIteration).renderResultObservable.blockingFirst().children
 
         val expected = DivStructureAssertion.assertDiv {
             assertDiv {

@@ -4,6 +4,7 @@ import dev.reactant.resquare.bukkit.container.createUI
 import dev.reactant.resquare.bukkit.debugger.server.ResquareWebsocketServer
 import dev.reactant.resquare.dom.childrenOf
 import dev.reactant.resquare.dom.declareComponent
+import dev.reactant.resquare.dom.unaryPlus
 import dev.reactant.resquare.elements.DivProps
 import dev.reactant.resquare.elements.div
 import dev.reactant.resquare.elements.styleOf
@@ -119,12 +120,11 @@ class ResquareBukkitDebugger : JavaPlugin() {
                             background = ItemStack(Material.WHITE_STAINED_GLASS),
                             fill = ItemStack(Material.GREEN_STAINED_GLASS)
                         )),
-
-                        memoProgressBar(ProgressBarProps(
+                        +(if (progress > 50) null else memoProgressBar(ProgressBarProps(
                             percentage = progress,
                             background = ItemStack(Material.WHITE_STAINED_GLASS),
                             fill = ItemStack(Material.GREEN_STAINED_GLASS)
-                        )),
+                        ))),
 
                         memoProgressBar(ProgressBarProps(
                             percentage = 14.5f,
@@ -168,7 +168,7 @@ class ResquareBukkitDebugger : JavaPlugin() {
                 ))
             }
 
-            val ui = createUI(testApp, 9, 6, "test", true)
+            val ui = createUI(memo(testApp), 9, 6, "test", true)
 
             if (sender is Player) {
                 ui.openInventory(sender)

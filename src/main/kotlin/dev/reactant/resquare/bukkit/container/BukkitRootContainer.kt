@@ -68,7 +68,7 @@ class BukkitRootContainer internal constructor(
     init {
         val profilerDOMRenderTask = ProfilerDataChannel.currentProfilerResult?.createDOMRenderTask(this)
         profilerDOMRenderTask?.totalTimePeriod?.start()
-        render(profilerDOMRenderTask = profilerDOMRenderTask)
+        renderIteration(profilerDOMRenderTask = profilerDOMRenderTask)
         profilerDOMRenderTask?.totalTimePeriod?.end()
         if (autoDestroy) {
             addEventListener { e: ResquareCloseEvent ->
@@ -112,4 +112,32 @@ fun createUI(
     multiThread: Boolean = false,
     autoDestroy: Boolean = true,
 ) = BukkitRootContainer({ +root() }, width, height, title, multiThread, autoDestroy)
+    .also { BukkitRootContainerController.addRootContainer(it) }
+
+fun <P : Any> createUI(
+    root: Component.WithOptionalProps<P>,
+    props: P? = null,
+    width: Int,
+    height: Int,
+    title: String,
+    /**
+     * True to enable multithreading rendering for update instead of running in main thread
+     */
+    multiThread: Boolean = false,
+    autoDestroy: Boolean = true,
+) = BukkitRootContainer({ +root(props) }, width, height, title, multiThread, autoDestroy)
+    .also { BukkitRootContainerController.addRootContainer(it) }
+
+fun <P : Any> createUI(
+    root: Component.WithProps<P>,
+    props: P,
+    width: Int,
+    height: Int,
+    title: String,
+    /**
+     * True to enable multithreading rendering for update instead of running in main thread
+     */
+    multiThread: Boolean = false,
+    autoDestroy: Boolean = true,
+) = BukkitRootContainer({ +root(props) }, width, height, title, multiThread, autoDestroy)
     .also { BukkitRootContainerController.addRootContainer(it) }

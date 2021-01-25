@@ -3,7 +3,6 @@ package dev.reactant.resquare.elements
 import dev.reactant.resquare.dom.Node
 import dev.reactant.resquare.dom.PropsWithChildren
 import dev.reactant.resquare.dom.childrenOf
-import dev.reactant.resquare.dom.declareComponent
 import dev.reactant.resquare.dom.unaryPlus
 import dev.reactant.resquare.event.EventHandler
 import dev.reactant.resquare.event.ResquareClickEvent
@@ -44,4 +43,4 @@ class Div(val props: DivProps) : BaseElement() {
     }
 }
 
-val div = declareComponent("div", ::DivProps) { props: DivProps -> +Div(props) }
+fun div(props: DivProps = DivProps()) = +Div(props)

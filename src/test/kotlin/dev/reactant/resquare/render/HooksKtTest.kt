@@ -29,7 +29,7 @@ internal class HooksKtTest {
         }
 
         val container = rootContainerFactory { +test() }
-        container.render()
+        container.renderIteration()
         assertEquals(Dimension.Points(5f), (container.lastRenderResult?.children?.first() as Div).props.style.width)
     }
 
@@ -54,7 +54,7 @@ internal class HooksKtTest {
         }
 
         val container = rootContainerFactory { +test() }
-        container.render()
+        container.renderIteration()
         assertEquals(Dimension.Points(5f), (container.lastRenderResult?.children?.first() as Div).props.style.width)
         assertEquals(1, executedTimes)
     }
@@ -80,7 +80,7 @@ internal class HooksKtTest {
         }
 
         val container = rootContainerFactory { +test() }
-        container.render()
+        container.renderIteration()
         assertEquals(Dimension.Points(10f), (container.lastRenderResult?.children?.first() as Div).props.style.width)
         assertEquals(5, executedTimes)
     }
@@ -114,7 +114,7 @@ internal class HooksKtTest {
         }
 
         val container = rootContainerFactory { +test() }
-        container.render()
+        container.renderIteration()
         assertEquals(Dimension.Points(5f), (container.lastRenderResult?.children?.first() as Div).props.style.width)
         assertEquals(5, executedTimes)
         assertEquals(4, cleanTimes)
@@ -151,7 +151,7 @@ internal class HooksKtTest {
         }
 
         val container = rootContainerFactory { +test() }
-        container.render()
+        container.renderIteration()
         assertEquals(Dimension.Points(2f), (container.lastRenderResult?.children?.first() as Div).props.style.width)
         assertEquals(1, executedTimes)
         assertEquals(0, cleanTimes)

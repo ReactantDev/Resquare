@@ -5,29 +5,31 @@ import dev.reactant.resquare.dom.Node
 import dev.reactant.resquare.dom.currentThreadNodeRenderCycleInfo
 import dev.reactant.resquare.elements.BaseElement
 import dev.reactant.resquare.elements.Element
+import dev.reactant.resquare.profiler.ProfilerNodeStateRenderInfo
 import java.util.LinkedList
 
-private fun recursiveDiffUpdateElementTree(
-    previousElements: List<Element>,
+private fun recursiveDiffUpdateSubNode(
+    nodeRenderState: NodeRenderState,
 ): List<Element> {
+    val cycleInfo = currentThreadNodeRenderCycleInfo.get()
+    val previousElements: List<Element> = nodeRenderState.lastRenderedResult!!
+
     data class NeedUpdateDiffSection(val fromIndex: Int, val count: Int, val belongsTo: NodeRenderState)
 
-    val cycleInfo = currentThreadNodeRenderCycleInfo.get()
-    val elementsUnreachedUpdatedNodeRenderStateMap = cycleInfo.elementsUnreachedUpdatedNodeRenderStateMap
     val diffSections: ArrayList<NeedUpdateDiffSection> = ArrayList()
-    val diffElements = HashSet<Element>()
-    previousElements.forEachIndexed { index, element ->
-        if (!diffElements.contains(element) && elementsUnreachedUpdatedNodeRenderStateMap.containsKey(element)) {
-            val needUpdateNodeState = elementsUnreachedUpdatedNodeRenderStateMap[element]!!
-            diffSections.add(NeedUpdateDiffSection(fromIndex = index,
-                count = needUpdateNodeState.lastRenderedResult!!.size,
-                needUpdateNodeState))
-            diffElements.addAll(needUpdateNodeState.lastRenderedResult!!)
+    nodeRenderState.subNodeRenderStates.values.forEach { subNodeState ->
+        if (cycleInfo.unreachedUpdatedNodeRenderState.contains(subNodeState)) {
+            val subNodeElements = subNodeState.lastRenderedResult!!
+            diffSections.add(NeedUpdateDiffSection(
+                previousElements.indexOf(subNodeElements.first()),
+                subNodeElements.size,
+                subNodeState
+            ))
+            cycleInfo.unreachedUpdatedNodeRenderState.remove(subNodeState)
+        } else {
+            startNodeRenderStateContent(subNodeState, false) { recursiveDiffUpdateSubNode(subNodeState) }
         }
     }
-
-    previousElements.filter { element -> !diffElements.contains(element) }
-        .map { it.partialUpdateChildren(recursiveDiffUpdateElementTree(it.children)) }
 
     if (diffSections.size == 0) return previousElements
 
@@ -35,7 +37,11 @@ private fun recursiveDiffUpdateElementTree(
     var indexOffset = 0
 
     diffSections.forEach { (fromIndex, count, belongsTo) ->
-        val replaceWithElements = startNodeRenderStateContent(belongsTo, belongsTo.lastRenderingContent!!)
+        currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdInfoMap?.put(
+            belongsTo.id,
+            ProfilerNodeStateRenderInfo("Hook update")
+        )
+        val replaceWithElements = startNodeRenderStateContent(belongsTo, true, belongsTo.lastRenderingContent!!)
         belongsTo.lastRenderedResult = replaceWithElements
         repeat(count) {
             newElements.removeAt(fromIndex + indexOffset)
@@ -44,6 +50,8 @@ private fun recursiveDiffUpdateElementTree(
         indexOffset += replaceWithElements.size - count
     }
 
+    nodeRenderState.lastRenderedResult!!.first().partialUpdateChildren(newElements)
+    nodeRenderState.lastRenderedResult = newElements
     return newElements
 }
 
@@ -51,19 +59,23 @@ private fun renderNode(
     node: Node? = null,
     component: Component? = null,
     key: String? = null,
-    content: () -> List<Element>
+    content: () -> List<Element>,
 ): List<Element> {
-    return runThreadSubNodeRender(component, key) { nodeRenderState ->
+    return runThreadSubNodeRender(node?.debugName ?: "unknown", component, key) { nodeRenderState ->
         val isUpdatedNode =
             currentThreadNodeRenderCycleInfo.get().unreachedUpdatedNodeRenderState.contains(nodeRenderState)
         val needRender = nodeRenderState.lastRenderingNode !== node || isUpdatedNode
 
         val result = if (needRender) {
             nodeRenderState.lastRenderingContent = content
+            currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdInfoMap?.put(
+                nodeRenderState.id,
+                ProfilerNodeStateRenderInfo("Parent render")
+            )
             content()
         } else {
             nodeRenderState.currentReachedStateKeys.addAll(nodeRenderState.subNodeRenderStates.keys)
-            recursiveDiffUpdateElementTree(nodeRenderState.lastRenderedResult!!)
+            recursiveDiffUpdateSubNode(nodeRenderState)
         }
 
         if (isUpdatedNode) {

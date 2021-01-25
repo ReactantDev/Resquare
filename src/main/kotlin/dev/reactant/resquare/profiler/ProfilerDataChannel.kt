@@ -25,7 +25,7 @@ data class TaskTimePeriod(
 data class ProfilerNodeRenderState(
     val id: String,
     val name: String,
-    val subNodeRenderStates: List<ProfilerNodeRenderState>
+    val subNodeRenderStates: List<ProfilerNodeRenderState>,
 ) {
     companion object {
         fun from(nodeRenderState: NodeRenderState): ProfilerNodeRenderState =
@@ -37,9 +37,14 @@ data class ProfilerNodeRenderState(
     }
 }
 
+data class ProfilerNodeStateRenderInfo(
+    val renderReason: String,
+)
+
 data class ProfilerDOMRenderTaskIteration(
     val totalTimePeriod: TaskTimePeriod = TaskTimePeriod(),
     val nodeStateIdTimePeriodMap: HashMap<String, TaskTimePeriod> = HashMap(),
+    val nodeStateIdInfoMap: HashMap<String, ProfilerNodeStateRenderInfo> = HashMap(),
     var profilerNodeRenderState: ProfilerNodeRenderState? = null,
 )
 

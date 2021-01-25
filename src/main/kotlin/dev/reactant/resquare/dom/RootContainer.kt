@@ -3,8 +3,6 @@ package dev.reactant.resquare.dom
 import dev.reactant.resquare.elements.BaseElement
 import dev.reactant.resquare.elements.Body
 import dev.reactant.resquare.elements.Element
-import dev.reactant.resquare.event.EventHandler
-import dev.reactant.resquare.event.ResquareEvent
 import dev.reactant.resquare.profiler.ProfilerDOMRenderTask
 import dev.reactant.resquare.profiler.ProfilerDOMRenderTaskIteration
 import dev.reactant.resquare.profiler.ProfilerDataChannel
@@ -70,19 +68,19 @@ abstract class RootContainer : BaseElement() {
             rootState.scheduledUpdates.onEach { it.commit() }.clear()
         }
         synchronized(rootState.internalUpdates) {
-            render(committedScheduledUpdates = committedScheduledUpdates!!,
+            renderIteration(committedScheduledUpdates = committedScheduledUpdates!!,
                 profilerDOMRenderTask = profilerDOMRenderTask)
         }
         profilerDOMRenderTask?.totalTimePeriod?.end()
     }
 
-    tailrec fun render(
-        loopCount: Int = 0,
+    tailrec fun renderIteration(
+        iterateTime: Int = 0,
         committedScheduledUpdates: HashSet<NodeRenderState>? = null,
-        profilerDOMRenderTask: ProfilerDOMRenderTask? = null
+        profilerDOMRenderTask: ProfilerDOMRenderTask? = null,
     ) {
-        if (loopCount > 0 && rootState.internalUpdates.isEmpty()) return
-        if (loopCount > 20) throw IllegalStateException("render node loop count reach max: $loopCount, probably an infinity update loop")
+        if (iterateTime > 0 && rootState.internalUpdates.isEmpty()) return
+        if (iterateTime > 50) throw IllegalStateException("render node loop count reach max: $iterateTime, probably an infinity update loop")
         if (updatesSubscription == null) updatesSubscription = updateObservable.subscribe { renderUpdates() }
         assert(currentThreadNodeRenderCycleInfo.get() == null)
 
@@ -99,7 +97,7 @@ abstract class RootContainer : BaseElement() {
         }
 
         currentThreadNodeRenderCycleInfo.set(NodeRenderIterateInfo(
-            internalIterateCount = loopCount,
+            internalIterateCount = iterateTime,
             unreachedUpdatedNodeRenderState = unreachedUpdatedNodeRenderState,
             elementsUnreachedUpdatedNodeRenderStateMap = elementsUnreachedUpdatedNodeRenderStateMap,
             profilerIterationData = profilerIterationData
@@ -117,49 +115,11 @@ abstract class RootContainer : BaseElement() {
         profilerIterationData?.profilerNodeRenderState = ProfilerNodeRenderState.from(rootState)
         profilerIterationData?.totalTimePeriod?.end()
 
-        if (exception != null) throw exception else render(loopCount = loopCount + 1,
-            profilerDOMRenderTask = profilerDOMRenderTask)
+        if (exception != null) throw exception
+        else renderIteration(iterateTime = iterateTime + 1, profilerDOMRenderTask = profilerDOMRenderTask)
     }
 
-    override fun renderChildren() {
-        throw UnsupportedOperationException()
-    }
-
-    fun <T : ResquareEvent<*>> addEventListener(
-        eventClass: Class<T>,
-        capture: Boolean = false,
-        handler: EventHandler<T>
-    ): EventHandler<in T> {
-        (if (capture) _eventCaptureHandlers else _eventHandlers)
-            .getOrPut(eventClass) { LinkedHashSet() }
-            .add(handler as (ResquareEvent<*>) -> Unit)
-        return handler
-    }
-
-    inline fun <reified T : ResquareEvent<*>> addEventListener(
-        capture: Boolean = false,
-        noinline handler: EventHandler<in T>
-    ): EventHandler<T> = addEventListener(T::class.java, capture, handler)
-
-    fun <T : ResquareEvent<*>> removeEventListener(
-        eventClass: Class<T>,
-        capture: Boolean = false,
-        handler: EventHandler<T>
-    ) {
-        _eventCaptureHandlers[eventClass]?.remove(handler)
-        if (_eventCaptureHandlers[eventClass]?.isEmpty() == true) {
-            _eventCaptureHandlers.remove(eventClass)
-        }
-    }
-
-    inline fun <reified T : ResquareEvent<*>> removeEventListener(
-        noinline handler: EventHandler<T>,
-    ) = removeEventListener(T::class.java, false, handler)
-
-    inline fun <reified T : ResquareEvent<*>> removeEventListener(
-        capture: Boolean,
-        noinline handler: EventHandler<T>,
-    ) = removeEventListener(T::class.java, capture, handler)
+    override fun renderChildren() = throw UnsupportedOperationException()
 
     override fun partialUpdateChildren(newChildren: List<Element>) = throw java.lang.UnsupportedOperationException()
 }

@@ -6,6 +6,8 @@ interface Element : EventTarget {
     val id: String
     val children: List<Element>
     val parent: Element?
+    val debugName: String
+
     fun renderChildren()
 
     /**

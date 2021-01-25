@@ -3,7 +3,12 @@ package dev.reactant.resquare.dom
 import dev.reactant.resquare.elements.Element
 
 sealed class Node {
-    data class ElementNode(val raw: Element) : Node()
+
+    abstract val debugName: String
+
+    data class ElementNode(val raw: Element) : Node() {
+        override val debugName: String get() = raw.debugName
+    }
 
     interface ComponentLikeNode {
         val componentName: String
@@ -21,6 +26,7 @@ sealed class Node {
         override val component: Component,
     ) : Node(), ComponentLikeNode {
         override fun runContent() = content(props)
+        override val debugName: String get() = componentName
     }
 
     data class ComponentWithoutPropsNode(
@@ -30,16 +36,24 @@ sealed class Node {
         override val component: Component,
     ) : Node(), ComponentLikeNode {
         override fun runContent() = content()
+        override val debugName: String get() = componentName
     }
 
     interface ListLikeNode {
         val raw: List<Node>
     }
 
-    data class ComponentChildrenNode internal constructor(override val raw: List<Node>) : Node(), ListLikeNode
-    data class ListNode(override val raw: List<Node>) : Node(), ListLikeNode
+    data class ComponentChildrenNode internal constructor(override val raw: List<Node>) : Node(), ListLikeNode {
+        override val debugName: String get() = "ChildrenList"
+    }
 
-    object NullNode : Node()
+    data class ListNode(override val raw: List<Node>) : Node(), ListLikeNode {
+        override val debugName: String get() = "List"
+    }
+
+    object NullNode : Node() {
+        override val debugName: String get() = "null"
+    }
 }
 
 // node creation dsl
