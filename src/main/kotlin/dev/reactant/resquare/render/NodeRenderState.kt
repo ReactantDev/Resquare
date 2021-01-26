@@ -62,9 +62,6 @@ class NodeRenderState(
         val insertedAmount: Int,
     )
 
-    val subNodeInsertedPositionMap = HashMap<NodeRenderState, LastRenderedPosition>()
-    val elementChildrenIndexShiftMap = HashMap<Element, Int>()
-
     /**
      * Return lastRenderedResult is the node is "reference equal"
      */
@@ -157,7 +154,6 @@ class NodeRenderState(
         this.subNodeRenderStates.values.onEach { it.unmount() }
         this.unmountCallbacks.forEach { it() }
         this.unmountCallbacks.clear()
-        this.elementChildrenIndexShiftMap.clear()
         this.lastRenderedResult?.forEach { (it as BaseElement).parent = null }
     }
 

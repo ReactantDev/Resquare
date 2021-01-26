@@ -20,7 +20,7 @@ private fun recursiveDiffUpdateSubNode(
             // TODO: probably a performance issues when too many child
             val insertAt = insertInto!!.children.indexOf(subNodeState.lastRenderedResult!!.first())
             val replaceAmount = subNodeState.lastRenderedResult!!.size
-            currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdInfoMap?.put(
+            cycleInfo.profilerIterationData?.nodeStateIdInfoMap?.put(
                 subNodeState.id,
                 ProfilerNodeStateRenderInfo("Hook update")
             )
