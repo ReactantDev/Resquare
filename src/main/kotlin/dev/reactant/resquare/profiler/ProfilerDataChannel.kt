@@ -74,7 +74,7 @@ data class RootContainerInfo(
             rootContainer.inventory.viewers.map { it.name },
             rootContainer.width,
             rootContainer.height,
-            rootContainer.multiThread,
+            rootContainer.multiThreadComponentRender,
         )
     }
 }

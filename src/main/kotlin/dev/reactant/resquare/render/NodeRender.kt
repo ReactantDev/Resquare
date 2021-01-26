@@ -60,7 +60,7 @@ private fun renderNodeContent(
                 nodeRenderState.id,
                 ProfilerNodeStateRenderInfo("Parent render")
             )
-            content()
+            content().also { it.forEach { (it as BaseElement).parent = parent } }
         } else {
             nodeRenderState.currentReachedStateKeys.addAll(nodeRenderState.subNodeRenderStates.keys)
             recursiveDiffUpdateSubNode(nodeRenderState)
@@ -81,7 +81,7 @@ private fun renderNodeContent(
     }
 }
 
-fun renderNode(node: Node?, parent: Element, insertAt: Int): List<Element> = when (node) {
+fun renderNode(node: Node?, parent: Element): List<Element> = when (node) {
     null -> renderNodeContent(node, parent) { listOf() }
     is Node.NullNode -> renderNodeContent(node, parent) { listOf() }
     is Node.ListNode -> renderNodeContent(node, parent) {
@@ -90,13 +90,11 @@ fun renderNode(node: Node?, parent: Element, insertAt: Int): List<Element> = whe
                 renderState.logger.warning("Component in list should declare with an key (${getCurrentThreadNodeRenderState().debugPath})")
             }
         }
-        var listIncreased = 0
-        node.raw.flatMap { renderNode(it, parent, insertAt + listIncreased).also { listIncreased += it.size } }
+        node.raw.flatMap { renderNode(it, parent) }
     }
     is Node.ComponentChildrenNode -> {
-        var listIncreased = 0
         renderNodeContent(node, parent) {
-            node.raw.flatMap { renderNode(it, parent, insertAt + listIncreased).also { listIncreased += it.size } }
+            node.raw.flatMap { renderNode(it, parent) }
         }
     }
     is Node.ElementNode -> {
@@ -105,9 +103,9 @@ fun renderNode(node: Node?, parent: Element, insertAt: Int): List<Element> = whe
         }
     }
     is Node.ComponentWithPropsNode<*> -> renderNodeContent(node, parent, node.component, node.key) {
-        renderNode(node.runContent(), parent, insertAt)
+        renderNode(node.runContent(), parent)
     }
     is Node.ComponentWithoutPropsNode -> renderNodeContent(node, parent, node.component, node.key) {
-        renderNode(node.runContent(), parent, insertAt)
+        renderNode(node.runContent(), parent)
     }
 }

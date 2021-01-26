@@ -84,7 +84,7 @@ data class DebuggerRootContainer(
             rootContainer.width,
             rootContainer.height,
             rootContainer.title,
-            rootContainer.multiThread,
+            rootContainer.multiThreadComponentRender,
 
             rootContainer.lastStyleRenderResult?.let { DebuggerStyleRenderResult.from(it) }
         )

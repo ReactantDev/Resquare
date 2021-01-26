@@ -23,13 +23,7 @@ class Div(val props: DivProps) : BaseElement() {
     override val id: String = UUID.randomUUID().toString()
     override lateinit var children: ArrayList<Element>
     override fun renderChildren() {
-        children = ArrayList(renderNode(props.children,
-            this,
-            0))
-    }
-
-    override fun partialUpdateChildren(newChildren: List<Element>) {
-        children = ArrayList(newChildren)
+        children = ArrayList(renderNode(props.children, this))
     }
 
     init {

@@ -9,10 +9,4 @@ interface Element : EventTarget {
     val debugName: String
 
     fun renderChildren()
-
-    /**
-     * For partial diff update nested element inside memo component
-     * Should not be called directly
-     */
-    fun partialUpdateChildren(newChildren: List<Element>)
 }

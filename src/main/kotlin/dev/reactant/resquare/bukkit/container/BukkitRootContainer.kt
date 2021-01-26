@@ -14,6 +14,7 @@ import dev.reactant.resquare.event.ResquareCloseEvent
 import dev.reactant.resquare.profiler.ProfilerDataChannel
 import dev.reactant.resquare.render.NodeRenderState
 import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import org.bukkit.Bukkit
 import org.bukkit.entity.HumanEntity
@@ -27,7 +28,8 @@ class BukkitRootContainer internal constructor(
     /**
      * True to enable multithreading rendering for update instead of running in main thread
      */
-    val multiThread: Boolean = false,
+    val multiThreadComponentRender: Boolean = false,
+    val multiThreadStyleRender: Boolean = false,
     val autoDestroy: Boolean = true,
     override val debugName: String = title,
 ) : RootContainer() {
@@ -38,16 +40,17 @@ class BukkitRootContainer internal constructor(
         logger = ResquareBukkit.instance.logger,
         rootContainer = this,
     )
-    private val threadPool = if (multiThread) Executors.newFixedThreadPool(1) else null
+    private val threadPool = if (multiThreadComponentRender) Executors.newFixedThreadPool(1) else null
+    private val threadScheduler = threadPool?.let { Schedulers.from(it) }
     override val updateObservable: Observable<Boolean> =
-        (if (!multiThread) rootState.updatesObservable.observeOn(ResquareBukkit.instance.uiUpdateMainThreadScheduler)
+        (if (!multiThreadComponentRender) rootState.updatesObservable.observeOn(ResquareBukkit.instance.uiUpdateMainThreadScheduler)
         else rootState.updatesObservable.observeOn(Schedulers.from(threadPool!!)))
     private var destroyed = false
 
     val inventory = Bukkit.createInventory(null, width * height, title)
 
     val styleRenderResultObservable = renderResultObservable
-        .observeOn(ResquareBukkit.instance.uiUpdateMainThreadScheduler)
+        .observeOn(if (multiThreadStyleRender) threadScheduler else ResquareBukkit.instance.uiUpdateMainThreadScheduler)
         .map { BukkitStyleRender.convertBodyToPixels(this, it as Body, width, height) }!!
 
     private var inventoryRendered = false
@@ -55,15 +58,23 @@ class BukkitRootContainer internal constructor(
     var lastStyleRenderResult: BukkitStyleRenderResult? = null
         private set
 
-    // TODO: to develop event system, it is needed to store pixel.element so we can find out which element is being click
-    private val styleRenderResultSubscription = styleRenderResultObservable.subscribe {
-        lastStyleRenderResult = it
-        inventoryRendered = true
-        for (x in 0 until width) {
-            for (y in 0 until height) {
-                inventory.setItem(x + (y * width), it.pixels[x to y]?.itemStack)
+    private val compositeDisposable = CompositeDisposable()
+
+    init {
+        styleRenderResultObservable
+            .let {
+                if (multiThreadStyleRender) it.observeOn(ResquareBukkit.instance.uiUpdateMainThreadScheduler)
+                else it
             }
-        }
+            .subscribe {
+                lastStyleRenderResult = it
+                inventoryRendered = true
+                for (x in 0 until width) {
+                    for (y in 0 until height) {
+                        inventory.setItem(x + (y * width), it.pixels[x to y]?.itemStack)
+                    }
+                }
+            }.let { compositeDisposable.add(it) }
     }
 
     init {
@@ -78,20 +89,23 @@ class BukkitRootContainer internal constructor(
         }
     }
 
-    // TODO: AUTO dispose when no one watching it
-
     override fun destroy() {
         if (destroyed) return
         super.destroy()
-        styleRenderResultSubscription?.dispose()
+        compositeDisposable.dispose()
         threadPool?.shutdown()
         destroyed = true
         BukkitRootContainerController.removeRootContainer(this)
-        // stretch.free()
     }
 
     fun openInventory(entity: HumanEntity) {
-        entity.openInventory(this.inventory)
+        if (lastStyleRenderResult == null) {
+            styleRenderResultObservable.firstElement().subscribe {
+                entity.openInventory(this.inventory)
+            }.also { compositeDisposable.add(it) }
+        } else {
+            entity.openInventory(this.inventory)
+        }
     }
 
     internal fun getElementByRawSlot(rawSlot: Int): Element {
@@ -110,10 +124,18 @@ fun createUI(
     /**
      * True to enable multithreading rendering for update instead of running in main thread
      */
-    multiThread: Boolean = false,
+    multiThreadComponentRender: Boolean = false,
+    multiThreadStyleRender: Boolean = false,
     autoDestroy: Boolean = true,
     debugName: String = title,
-) = BukkitRootContainer({ +root() }, width, height, title, multiThread, autoDestroy, debugName)
+) = BukkitRootContainer({ +root() },
+    width,
+    height,
+    title,
+    multiThreadComponentRender,
+    multiThreadStyleRender,
+    autoDestroy,
+    debugName)
     .also { BukkitRootContainerController.addRootContainer(it) }
 
 fun <P : Any> createUI(
@@ -125,10 +147,18 @@ fun <P : Any> createUI(
     /**
      * True to enable multithreading rendering for update instead of running in main thread
      */
-    multiThread: Boolean = false,
+    multiThreadComponentRender: Boolean = false,
+    multiThreadStyleRender: Boolean = false,
     autoDestroy: Boolean = true,
     debugName: String = title,
-) = BukkitRootContainer({ +root(props) }, width, height, title, multiThread, autoDestroy, debugName)
+) = BukkitRootContainer({ +root(props) },
+    width,
+    height,
+    title,
+    multiThreadComponentRender,
+    multiThreadStyleRender,
+    autoDestroy,
+    debugName)
     .also { BukkitRootContainerController.addRootContainer(it) }
 
 fun <P : Any> createUI(
@@ -140,8 +170,16 @@ fun <P : Any> createUI(
     /**
      * True to enable multithreading rendering for update instead of running in main thread
      */
-    multiThread: Boolean = false,
+    multiThreadComponentRender: Boolean = false,
+    multiThreadStyleRender: Boolean = false,
     autoDestroy: Boolean = true,
     debugName: String = title,
-) = BukkitRootContainer({ +root(props) }, width, height, title, multiThread, autoDestroy, debugName)
+) = BukkitRootContainer({ +root(props) },
+    width,
+    height,
+    title,
+    multiThreadComponentRender,
+    multiThreadStyleRender,
+    autoDestroy,
+    debugName)
     .also { BukkitRootContainerController.addRootContainer(it) }

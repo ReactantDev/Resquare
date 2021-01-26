@@ -12,6 +12,4 @@ open class Body(override var children: ArrayList<Element>, parent: RootContainer
     override fun renderChildren() {
         throw UnsupportedOperationException("Body should be render by assign children")
     }
-
-    override fun partialUpdateChildren(newChildren: List<Element>) = throw java.lang.UnsupportedOperationException()
 }

@@ -92,6 +92,7 @@ class ResquareBukkitDebugger : JavaPlugin() {
 
             val testApp = declareComponent {
                 val (progress, setProgress) = useState(0f)
+                val (progress2, setProgress2) = useState(40f)
                 val rootContainer = useRootContainer()
                 useEffect({
                     val handler = rootContainer.addEventListener<ResquareClickEvent<*>> { it.preventDefault() }
@@ -100,11 +101,13 @@ class ResquareBukkitDebugger : JavaPlugin() {
 
                 val onIncreaseButtonClick = useCallback({ e: ResquareClickEvent<*> ->
                     setProgress((progress + (0.2f / 9) * 100).coerceAtMost(100f))
-                }, arrayOf(progress))
+                    setProgress2((progress2 - (0.3f / 9) * 100).coerceAtLeast(0f))
+                }, arrayOf(progress, progress2))
 
                 val onDecreaseButtonClick = useCallback({ e: ResquareClickEvent<*> ->
                     setProgress((progress - (0.3f / 9) * 100).coerceAtLeast(0f))
-                }, arrayOf(progress))
+                    setProgress2((progress2 + (0.3f / 9) * 100).coerceAtLeast(0f))
+                }, arrayOf(progress, progress2))
 
                 div(DivProps(
                     style = styleOf {
@@ -121,19 +124,19 @@ class ResquareBukkitDebugger : JavaPlugin() {
                             fill = ItemStack(Material.GREEN_STAINED_GLASS)
                         )),
                         +(if (progress > 50) null else memoProgressBar(ProgressBarProps(
-                            percentage = progress,
+                            percentage = 23f,
                             background = ItemStack(Material.WHITE_STAINED_GLASS),
                             fill = ItemStack(Material.GREEN_STAINED_GLASS)
                         ))),
 
                         memoProgressBar(ProgressBarProps(
-                            percentage = 14.5f,
+                            percentage = progress2,
                             background = ItemStack(Material.WHITE_STAINED_GLASS),
                             fill = ItemStack(Material.GREEN_STAINED_GLASS)
                         )),
 
                         memoProgressBar(ProgressBarProps(
-                            percentage = progress,
+                            percentage = 28.4f,
                             background = ItemStack(Material.WHITE_STAINED_GLASS),
                             fill = ItemStack(Material.GREEN_STAINED_GLASS)
                         )),

@@ -41,7 +41,12 @@ abstract class RootContainer : BaseElement() {
     protected abstract val updateObservable: Observable<Boolean>
     var updatesSubscription: Disposable? = null
     protected val body = Body(arrayListOf(), this)
-    protected val bodyWrapper: (List<Element>) -> Body = { children -> body.also { body.children = ArrayList(children) } }
+    protected val bodyWrapper: (List<Element>) -> Body = { children ->
+        body.also {
+            body.children.forEach { (it as BaseElement).parent = null }
+            body.children = ArrayList(children).also { it.forEach { el -> (el as BaseElement).parent = body } }
+        }
+    }
 
     protected val renderResultSubject: BehaviorSubject<Element> = BehaviorSubject.create()
     val renderResultObservable: Observable<Element> = renderResultSubject.hide()
@@ -108,7 +113,7 @@ abstract class RootContainer : BaseElement() {
             // TODO: FILTER ALL updated state element but NOT UNMOUNTED state node (rootSate = this.rootState)
             rootState.internalUpdates.onEach { it.commit() }.clear()
             renderResultSubject.onNext(bodyWrapper(startRootNodeRenderState(rootState) {
-                renderNode(content(), body, 0)
+                renderNode(content(), body)
             }))
         }.exceptionOrNull()
         currentThreadNodeRenderCycleInfo.remove()
@@ -121,6 +126,4 @@ abstract class RootContainer : BaseElement() {
     }
 
     override fun renderChildren() = throw UnsupportedOperationException()
-
-    override fun partialUpdateChildren(newChildren: List<Element>) = throw java.lang.UnsupportedOperationException()
 }
