@@ -5,6 +5,7 @@ import dev.reactant.resquare.dom.Component
 import dev.reactant.resquare.dom.Node
 import dev.reactant.resquare.dom.RootContainer
 import dev.reactant.resquare.dom.currentThreadNodeRenderCycleInfo
+import dev.reactant.resquare.elements.BaseElement
 import dev.reactant.resquare.elements.Element
 import dev.reactant.resquare.profiler.TaskTimePeriod
 import io.reactivex.rxjava3.core.Observable
@@ -54,6 +55,15 @@ class NodeRenderState(
     internal val effectsCleaners = ArrayList<() -> Unit>()
     internal val effects = ArrayList<() -> Unit>()
     private val unmountCallbacks = LinkedHashSet<() -> Unit>()
+
+    data class LastRenderedPosition(
+        val insertedAtElement: Element,
+        val insertedAtChildrenIndex: Int,
+        val insertedAmount: Int,
+    )
+
+    val subNodeInsertedPositionMap = HashMap<NodeRenderState, LastRenderedPosition>()
+    val elementChildrenIndexShiftMap = HashMap<Element, Int>()
 
     /**
      * Return lastRenderedResult is the node is "reference equal"
@@ -119,7 +129,13 @@ class NodeRenderState(
      * Create a sub node state or get from previous state if state key exist
      * return null if same state key exist
      */
-    fun runSubNodeStateContent(component: Component?, key: String?, debugName: String, content: () -> List<Element>): List<Element> {
+    fun runSubNodeStateContent(
+        parentElement: Element?,
+        component: Component?,
+        key: String?,
+        debugName: String,
+        content: () -> List<Element>,
+    ): List<Element> {
         if (key?.startsWith(resquarePreserveKeyPrefix) == true) {
             throw IllegalArgumentException("Key should not start with resquare reserved prefix: $resquarePreserveKeyPrefix")
         }
@@ -132,8 +148,7 @@ class NodeRenderState(
         currentReachedStateKeys.add(stateKey)
 
         val subNodeState = subNodeRenderStates.getOrPut(stateKey) {
-            NodeRenderState(this,
-                "$debugName#${currentReachedStateKeys.size - 1}")
+            NodeRenderState(this, "$debugName#${currentReachedStateKeys.size - 1}")
         }
         return startNodeRenderStateContent(subNodeState, true, content)
     }
@@ -142,13 +157,14 @@ class NodeRenderState(
         this.subNodeRenderStates.values.onEach { it.unmount() }
         this.unmountCallbacks.forEach { it() }
         this.unmountCallbacks.clear()
+        this.elementChildrenIndexShiftMap.clear()
+        this.lastRenderedResult?.forEach { (it as BaseElement).parent = null }
     }
 
     fun closeNodeState(unmountUnreachedNode: Boolean = true) {
         if (unmountUnreachedNode) {
             subNodeRenderStates.keys.filter { !currentReachedStateKeys.contains(it) }.forEach {
                 subNodeRenderStates.remove(it)!!.unmount()
-                println("unmount $unmountUnreachedNode $it")
             }
         }
 
@@ -164,17 +180,22 @@ internal fun getCurrentThreadNodeRenderState(): NodeRenderState =
         ?: throw IllegalStateException("Not rendering, are you trying to call use hook outside component?")
 
 internal fun runThreadSubNodeRender(
+    parentElement: Element?,
     debugName: String,
     component: Component? = null,
     key: String? = null,
-    content: (NodeRenderState) -> List<Element>
+    content: (NodeRenderState) -> List<Element>,
 ): List<Element> {
-    return getCurrentThreadNodeRenderState().runSubNodeStateContent(component, key, debugName) {
+    return getCurrentThreadNodeRenderState().runSubNodeStateContent(parentElement, component, key, debugName) {
         content(getCurrentThreadNodeRenderState())
     }
 }
 
-fun startNodeRenderStateContent(nodeRenderState: NodeRenderState, unmountUnreachedNode: Boolean = true, content: () -> List<Element>): List<Element> {
+fun startNodeRenderStateContent(
+    nodeRenderState: NodeRenderState,
+    unmountUnreachedNode: Boolean = true,
+    content: () -> List<Element>,
+): List<Element> {
     stateStack.get().push(nodeRenderState)
     val taskTimePeriod = currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdTimePeriodMap?.let {
         TaskTimePeriod().also { period -> it.put(nodeRenderState.id, period) }
@@ -193,7 +214,7 @@ fun startNodeRenderStateContent(nodeRenderState: NodeRenderState, unmountUnreach
 
 fun startRootNodeRenderState(
     rootNodeRenderState: NodeRenderState,
-    content: () -> List<Element>
+    content: () -> List<Element>,
 ): List<Element> {
     if (stateStack.get() != null) throw IllegalStateException("Cannot render another ui during ui rendering")
     stateStack.set(Stack())

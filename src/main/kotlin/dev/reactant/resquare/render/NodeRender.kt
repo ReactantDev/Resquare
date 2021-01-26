@@ -6,62 +6,50 @@ import dev.reactant.resquare.dom.currentThreadNodeRenderCycleInfo
 import dev.reactant.resquare.elements.BaseElement
 import dev.reactant.resquare.elements.Element
 import dev.reactant.resquare.profiler.ProfilerNodeStateRenderInfo
-import java.util.LinkedList
 
 private fun recursiveDiffUpdateSubNode(
     nodeRenderState: NodeRenderState,
-): List<Element> {
+) {
     val cycleInfo = currentThreadNodeRenderCycleInfo.get()
-    val previousElements: List<Element> = nodeRenderState.lastRenderedResult!!
 
-    data class NeedUpdateDiffSection(val fromIndex: Int, val count: Int, val belongsTo: NodeRenderState)
-
-    val diffSections: ArrayList<NeedUpdateDiffSection> = ArrayList()
     nodeRenderState.subNodeRenderStates.values.forEach { subNodeState ->
+
         if (cycleInfo.unreachedUpdatedNodeRenderState.contains(subNodeState)) {
-            val subNodeElements = subNodeState.lastRenderedResult!!
-            diffSections.add(NeedUpdateDiffSection(
-                previousElements.indexOf(subNodeElements.first()),
-                subNodeElements.size,
-                subNodeState
-            ))
+            val insertInto = subNodeState.lastRenderedResult!!.first().parent
+
+            // TODO: probably a performance issues when too many child
+            val insertAt = insertInto!!.children.indexOf(subNodeState.lastRenderedResult!!.first())
+            val replaceAmount = subNodeState.lastRenderedResult!!.size
+            currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdInfoMap?.put(
+                subNodeState.id,
+                ProfilerNodeStateRenderInfo("Hook update")
+            )
+            val result = startNodeRenderStateContent(subNodeState, true, subNodeState.lastRenderingContent!!)
+            result.forEach { (it as BaseElement).parent = insertInto }
+            subNodeState.lastRenderedResult = result
+            repeat(replaceAmount) {
+                insertInto.children.removeAt(insertAt)
+            }
+            insertInto.children.addAll(insertAt, result)
+
             cycleInfo.unreachedUpdatedNodeRenderState.remove(subNodeState)
         } else {
-            startNodeRenderStateContent(subNodeState, false) { recursiveDiffUpdateSubNode(subNodeState) }
+            startNodeRenderStateContent(subNodeState, false) {
+                recursiveDiffUpdateSubNode(subNodeState)
+                subNodeState.lastRenderedResult!!
+            }
         }
     }
-
-    if (diffSections.size == 0) return previousElements
-
-    val newElements = LinkedList(previousElements)
-    var indexOffset = 0
-
-    diffSections.forEach { (fromIndex, count, belongsTo) ->
-        currentThreadNodeRenderCycleInfo.get().profilerIterationData?.nodeStateIdInfoMap?.put(
-            belongsTo.id,
-            ProfilerNodeStateRenderInfo("Hook update")
-        )
-        val replaceWithElements = startNodeRenderStateContent(belongsTo, true, belongsTo.lastRenderingContent!!)
-        belongsTo.lastRenderedResult = replaceWithElements
-        repeat(count) {
-            newElements.removeAt(fromIndex + indexOffset)
-        }
-        newElements.addAll(fromIndex, replaceWithElements)
-        indexOffset += replaceWithElements.size - count
-    }
-
-    nodeRenderState.lastRenderedResult!!.first().partialUpdateChildren(newElements)
-    nodeRenderState.lastRenderedResult = newElements
-    return newElements
 }
 
-private fun renderNode(
+private fun renderNodeContent(
     node: Node? = null,
+    parent: Element?,
     component: Component? = null,
     key: String? = null,
     content: () -> List<Element>,
 ): List<Element> {
-    return runThreadSubNodeRender(node?.debugName ?: "unknown", component, key) { nodeRenderState ->
+    return runThreadSubNodeRender(parent, node?.debugName ?: "unknown", component, key) { nodeRenderState ->
         val isUpdatedNode =
             currentThreadNodeRenderCycleInfo.get().unreachedUpdatedNodeRenderState.contains(nodeRenderState)
         val needRender = nodeRenderState.lastRenderingNode !== node || isUpdatedNode
@@ -76,6 +64,7 @@ private fun renderNode(
         } else {
             nodeRenderState.currentReachedStateKeys.addAll(nodeRenderState.subNodeRenderStates.keys)
             recursiveDiffUpdateSubNode(nodeRenderState)
+            nodeRenderState.lastRenderedResult!! // same
         }
 
         if (isUpdatedNode) {
@@ -92,29 +81,33 @@ private fun renderNode(
     }
 }
 
-fun renderNode(node: Node?, parent: Element): List<Element> = when (node) {
-    null -> renderNode(node) { listOf() }
-    is Node.NullNode -> renderNode(node) { listOf() }
-    is Node.ListNode -> renderNode(node) {
+fun renderNode(node: Node?, parent: Element, insertAt: Int): List<Element> = when (node) {
+    null -> renderNodeContent(node, parent) { listOf() }
+    is Node.NullNode -> renderNodeContent(node, parent) { listOf() }
+    is Node.ListNode -> renderNodeContent(node, parent) {
         getCurrentThreadNodeRenderState().let { renderState ->
             if (renderState.isDebug && node.raw.any { it is Node.ComponentLikeNode && !it.hasKey }) {
                 renderState.logger.warning("Component in list should declare with an key (${getCurrentThreadNodeRenderState().debugPath})")
             }
         }
-        node.raw.flatMap { renderNode(it, parent) }
+        var listIncreased = 0
+        node.raw.flatMap { renderNode(it, parent, insertAt + listIncreased).also { listIncreased += it.size } }
     }
     is Node.ComponentChildrenNode -> {
-        renderNode(node) { node.raw.flatMap { renderNode(it, parent) } }
+        var listIncreased = 0
+        renderNodeContent(node, parent) {
+            node.raw.flatMap { renderNode(it, parent, insertAt + listIncreased).also { listIncreased += it.size } }
+        }
     }
     is Node.ElementNode -> {
-        renderNode(node) {
+        renderNodeContent(node, parent) {
             listOf(node.raw.also { (node.raw as BaseElement).parent = parent; it.renderChildren() })
         }
     }
-    is Node.ComponentWithPropsNode<*> -> renderNode(node, node.component, node.key) {
-        renderNode(node.runContent(), parent)
+    is Node.ComponentWithPropsNode<*> -> renderNodeContent(node, parent, node.component, node.key) {
+        renderNode(node.runContent(), parent, insertAt)
     }
-    is Node.ComponentWithoutPropsNode -> renderNode(node, node.component, node.key) {
-        renderNode(node.runContent(), parent)
+    is Node.ComponentWithoutPropsNode -> renderNodeContent(node, parent, node.component, node.key) {
+        renderNode(node.runContent(), parent, insertAt)
     }
 }

@@ -3,7 +3,7 @@ package dev.reactant.resquare.elements
 import dev.reactant.resquare.dom.RootContainer
 import java.util.UUID
 
-open class Body(override val children: List<Element>, parent: RootContainer) : BaseElement() {
+open class Body(override var children: ArrayList<Element>, parent: RootContainer) : BaseElement() {
     override var parent: Element? = parent
         set(value) =
             if (value != null) throw IllegalArgumentException("Body should be render by assign parent")

@@ -21,13 +21,15 @@ data class DivProps(
 
 class Div(val props: DivProps) : BaseElement() {
     override val id: String = UUID.randomUUID().toString()
-    override lateinit var children: List<Element>
+    override lateinit var children: ArrayList<Element>
     override fun renderChildren() {
-        children = renderNode(props.children, parent ?: throw IllegalStateException("Cannot render without parent"))
+        children = ArrayList(renderNode(props.children,
+            this,
+            0))
     }
 
     override fun partialUpdateChildren(newChildren: List<Element>) {
-        children = newChildren
+        children = ArrayList(newChildren)
     }
 
     init {

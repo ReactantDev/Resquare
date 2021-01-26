@@ -48,7 +48,7 @@ class ResquareBukkitDebugger : JavaPlugin() {
                 useEffect({
                     val task = Bukkit.getScheduler().runTaskTimer(ResquareBukkitDebugger.instance, Runnable {
                         setDecoItem(ItemStack(Material.values().random()))
-                    }, 20, 20);
+                    }, 5, 5);
                     {
                         task.cancel()
                     }
@@ -99,11 +99,11 @@ class ResquareBukkitDebugger : JavaPlugin() {
                 }, arrayOf())
 
                 val onIncreaseButtonClick = useCallback({ e: ResquareClickEvent<*> ->
-                    setProgress((progress + (1f / 9) * 100).coerceAtMost(100f))
+                    setProgress((progress + (0.2f / 9) * 100).coerceAtMost(100f))
                 }, arrayOf(progress))
 
                 val onDecreaseButtonClick = useCallback({ e: ResquareClickEvent<*> ->
-                    setProgress((progress - (1f / 9) * 100).coerceAtLeast(0f))
+                    setProgress((progress - (0.3f / 9) * 100).coerceAtLeast(0f))
                 }, arrayOf(progress))
 
                 div(DivProps(
@@ -168,7 +168,7 @@ class ResquareBukkitDebugger : JavaPlugin() {
                 ))
             }
 
-            val ui = createUI(memo(testApp), 9, 6, "test", true)
+            val ui = createUI(memo(testApp), 9, 6, "test", false)
 
             if (sender is Player) {
                 ui.openInventory(sender)

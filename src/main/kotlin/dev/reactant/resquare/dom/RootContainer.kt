@@ -40,12 +40,14 @@ abstract class RootContainer : BaseElement() {
     )
     protected abstract val updateObservable: Observable<Boolean>
     var updatesSubscription: Disposable? = null
-    protected val bodyWrapper: (List<Element>) -> Body = { Body(it, this) }
+    protected val body = Body(arrayListOf(), this)
+    protected val bodyWrapper: (List<Element>) -> Body = { children -> body.also { body.children = ArrayList(children) } }
 
     protected val renderResultSubject: BehaviorSubject<Element> = BehaviorSubject.create()
     val renderResultObservable: Observable<Element> = renderResultSubject.hide()
     val lastRenderResult: Element? get() = renderResultSubject.value
-    override val children: List<Element> get() = renderResultSubject.value?.let { listOf(it) } ?: listOf()
+    override val children: ArrayList<Element>
+        get() = body.children
 
     override var parent: Element? = null
         internal set(value) = throw IllegalArgumentException("Cannot set parent for root container")
@@ -105,9 +107,8 @@ abstract class RootContainer : BaseElement() {
         val exception = runCatching {
             // TODO: FILTER ALL updated state element but NOT UNMOUNTED state node (rootSate = this.rootState)
             rootState.internalUpdates.onEach { it.commit() }.clear()
-            lastRenderResult?.let { (it as BaseElement).parent = null }
             renderResultSubject.onNext(bodyWrapper(startRootNodeRenderState(rootState) {
-                renderNode(content(), this)
+                renderNode(content(), body, 0)
             }))
         }.exceptionOrNull()
         currentThreadNodeRenderCycleInfo.remove()

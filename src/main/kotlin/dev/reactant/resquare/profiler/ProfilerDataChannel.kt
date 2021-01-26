@@ -5,8 +5,21 @@ import dev.reactant.resquare.dom.RootContainer
 import dev.reactant.resquare.render.NodeRenderState
 
 interface ProfilerRenderTask {
+    val type: String
+    val taskName: String
     val totalTimePeriod: TaskTimePeriod
     val threadName: String
+}
+
+data class ProfilerStyleRenderTask(
+    override val taskName: String,
+    override val totalTimePeriod: TaskTimePeriod = TaskTimePeriod(),
+    val nodeCreationTimePeriod: TaskTimePeriod = TaskTimePeriod(),
+    val flexboxCalculationTimePeriod: TaskTimePeriod = TaskTimePeriod(),
+    val pixelPaintingTimePeriod: TaskTimePeriod = TaskTimePeriod(),
+    override val threadName: String,
+) : ProfilerRenderTask {
+    override val type = "StyleRenderTask"
 }
 
 data class TaskTimePeriod(
@@ -67,25 +80,39 @@ data class RootContainerInfo(
 }
 
 data class ProfilerDOMRenderTask(
+    override val taskName: String,
     val iterations: ArrayList<ProfilerDOMRenderTaskIteration> = ArrayList(),
     override val totalTimePeriod: TaskTimePeriod = TaskTimePeriod(),
     override val threadName: String,
     val rootContainerInfo: RootContainerInfo,
 ) : ProfilerRenderTask {
-    val type = "DOMRenderTask"
+    override val type = "DOMRenderTask"
     fun createIteration() = ProfilerDOMRenderTaskIteration().also { iterations.add(it) }
 }
 
 data class ProfilerResult(
     val domRenderTasks: ArrayList<ProfilerDOMRenderTask> = ArrayList(),
+    val styleRenderTasks: ArrayList<ProfilerStyleRenderTask> = ArrayList(),
     val totalTimePeriod: TaskTimePeriod = TaskTimePeriod(),
 ) {
     fun createDOMRenderTask(rootContainer: RootContainer) =
-        ProfilerDOMRenderTask(threadName = Thread.currentThread().name,
+        ProfilerDOMRenderTask(
+            taskName = rootContainer.debugName,
+            threadName = Thread.currentThread().name,
             rootContainerInfo = RootContainerInfo.from(rootContainer as BukkitRootContainer)
         ).also {
             synchronized(domRenderTasks) {
                 domRenderTasks.add(it)
+            }
+        }
+
+    fun createStyleRenderTask(rootContainer: RootContainer) =
+        ProfilerStyleRenderTask(
+            taskName = rootContainer.debugName,
+            threadName = Thread.currentThread().name,
+        ).also {
+            synchronized(domRenderTasks) {
+                styleRenderTasks.add(it)
             }
         }
 }

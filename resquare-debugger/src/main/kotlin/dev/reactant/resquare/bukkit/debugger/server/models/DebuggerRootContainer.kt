@@ -53,8 +53,7 @@ data class DebuggerElement(
 data class DebuggerStyleRenderResult(
     val elementTree: DebuggerElement,
     val pixelsResult: List<DebuggerPixel>,
-    val elementIdAccurateBoundingRectMap: Map<String, DebuggerBoundingRect<Float>>,
-    val elementIdPixelatedBoundingRectMap: Map<String, DebuggerBoundingRect<Int>>,
+    val elementIdBoundingRectMap: Map<String, DebuggerBoundingRect<Int>>,
 ) {
     companion object {
         fun from(bukkitStyleRenderResult: BukkitStyleRenderResult): DebuggerStyleRenderResult {
@@ -63,9 +62,7 @@ data class DebuggerStyleRenderResult(
                 bukkitStyleRenderResult.pixels.entries.map { (position, content) ->
                     DebuggerPixel(position, content.itemStack, content.element?.id)
                 },
-                bukkitStyleRenderResult.elementAccurateBoundingRectMap.mapKeys { it.key.id }
-                    .mapValues { DebuggerBoundingRect.from(it.value) },
-                bukkitStyleRenderResult.elementPixelatedBoundingRectMap.mapKeys { it.key.id }
+                bukkitStyleRenderResult.elementBoundingRectMap.mapKeys { it.key.id }
                     .mapValues { DebuggerBoundingRect.from(it.value) },
             )
         }

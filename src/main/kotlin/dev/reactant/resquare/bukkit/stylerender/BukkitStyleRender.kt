@@ -3,10 +3,14 @@ package dev.reactant.resquare.bukkit.stylerender
 import app.visly.stretch.Layout
 import app.visly.stretch.Node
 import app.visly.stretch.Size
+import app.visly.stretch.Stretch
+import dev.reactant.resquare.bukkit.container.BukkitRootContainer
 import dev.reactant.resquare.elements.Body
 import dev.reactant.resquare.elements.Div
 import dev.reactant.resquare.elements.Element
 import dev.reactant.resquare.elements.styleOf
+import dev.reactant.resquare.profiler.ProfilerDataChannel
+import kotlin.math.roundToInt
 
 object BukkitStyleRender {
 
@@ -19,7 +23,7 @@ object BukkitStyleRender {
     private fun convertBoxesToPixels(
         boundingRects: Collection<BoundingRect<Int>>,
         width: Int,
-        height: Int
+        height: Int,
     ): HashMap<Pair<Int, Int>, BukkitInventoryPixel> {
         val emptyPixels: HashMap<Pair<Int, Int>, BukkitInventoryPixel> = HashMap()
 
@@ -57,10 +61,18 @@ object BukkitStyleRender {
     /**
      * Non-thread safe, since stretch binding is not thread safe.
      */
-    fun convertBodyToPixels(body: Body, containerWidth: Int, containerHeight: Int): BukkitStyleRenderResult {
+    fun convertBodyToPixels(
+        rootContainer: BukkitRootContainer,
+        body: Body,
+        containerWidth: Int,
+        containerHeight: Int,
+    ): BukkitStyleRenderResult {
+        val stretch = Stretch()
+        val styleRenderTask = ProfilerDataChannel.currentProfilerResult?.createStyleRenderTask(rootContainer)
+        styleRenderTask?.totalTimePeriod?.start()
         val nodeElMap = HashMap<Node, Element>()
         val elementAccurateBoundingRectMap = LinkedHashMap<Element, BoundingRect<Float>>()
-        val elementPixelatedBoundingRectMap = LinkedHashMap<Element, BoundingRect<Int>>()
+        val elementBoundingRectMap = LinkedHashMap<Element, BoundingRect<Int>>()
 
         fun convertElementToStretchNode(el: Element): Node {
             val (style, children) = when (el) {
@@ -73,40 +85,43 @@ object BukkitStyleRender {
                 }
                 else -> throw IllegalArgumentException("${el.javaClass.canonicalName} is not supported")
             }
-            val node = Node(style, children.map { convertElementToStretchNode(it) })
+            val node = Node(stretch, style, children.map { convertElementToStretchNode(it) })
             nodeElMap[node] = el
             return node
         }
 
+        styleRenderTask?.nodeCreationTimePeriod?.start()
         val bodyNode = convertElementToStretchNode(body)
-        val bodyLayout = bodyNode.computeLayout(Size(containerWidth.toFloat(), containerHeight.toFloat()))
+        styleRenderTask?.nodeCreationTimePeriod?.end()
 
-        fun convertToBoundingRect(node: Node, nodeLayout: Layout, parentBoundingRect: BoundingRect<Float>?) {
+        styleRenderTask?.flexboxCalculationTimePeriod?.start()
+        val bodyLayout = bodyNode.computeLayout(Size(containerWidth.toFloat(), containerHeight.toFloat()))
+        styleRenderTask?.flexboxCalculationTimePeriod?.end()
+
+        fun convertToBoundingRect(node: Node, nodeLayout: Layout, parentBoundingRect: BoundingRect<Int>?) {
             val el = nodeElMap[node]!!
             val boundingRect = BoundingRect(
-                x = nodeLayout.x + (parentBoundingRect?.x ?: 0f),
-                y = nodeLayout.y + (parentBoundingRect?.y ?: 0f),
-                width = nodeLayout.width,
-                height = nodeLayout.height,
+                x = (nodeLayout.x + (parentBoundingRect?.x ?: 0)).roundToInt(),
+                y = (nodeLayout.y + (parentBoundingRect?.y ?: 0)).roundToInt(),
+                width = nodeLayout.width.roundToInt(),
+                height = nodeLayout.height.roundToInt(),
                 element = el,
             )
-            boundingRect.let { accurate ->
-                elementAccurateBoundingRectMap[el] = accurate
-
-                accurate.pixelated().let { pixelated ->
-                    elementPixelatedBoundingRectMap[el] = pixelated
-                }
-            }
+            elementBoundingRectMap[el] = boundingRect
             node.getChildren().forEachIndexed { index, _ ->
                 convertToBoundingRect(node.getChildren()[index], nodeLayout.children[index], boundingRect)
             }
         }
 
+        styleRenderTask?.pixelPaintingTimePeriod?.start()
         convertToBoundingRect(bodyNode, bodyLayout, null)
-        bodyNode.free()
+        val pixels = convertBoxesToPixels(elementBoundingRectMap.values, containerWidth, containerHeight)
+        styleRenderTask?.pixelPaintingTimePeriod?.end()
 
-        val pixels = convertBoxesToPixels(elementPixelatedBoundingRectMap.values, containerWidth, containerHeight)
+        // bodyNode.freeNodes()
+        stretch.free()
 
-        return BukkitStyleRenderResult(body, elementAccurateBoundingRectMap, elementPixelatedBoundingRectMap, pixels)
+        styleRenderTask?.totalTimePeriod?.end()
+        return BukkitStyleRenderResult(body, elementBoundingRectMap, pixels)
     }
 }

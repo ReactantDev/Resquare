@@ -29,6 +29,7 @@ class BukkitRootContainer internal constructor(
      */
     val multiThread: Boolean = false,
     val autoDestroy: Boolean = true,
+    override val debugName: String = title,
 ) : RootContainer() {
     override val rootState: NodeRenderState = NodeRenderState(
         parentState = null,
@@ -47,7 +48,7 @@ class BukkitRootContainer internal constructor(
 
     val styleRenderResultObservable = renderResultObservable
         .observeOn(ResquareBukkit.instance.uiUpdateMainThreadScheduler)
-        .map { BukkitStyleRender.convertBodyToPixels(it as Body, width, height) }!!
+        .map { BukkitStyleRender.convertBodyToPixels(this, it as Body, width, height) }!!
 
     private var inventoryRendered = false
 
@@ -72,7 +73,6 @@ class BukkitRootContainer internal constructor(
         profilerDOMRenderTask?.totalTimePeriod?.end()
         if (autoDestroy) {
             addEventListener { e: ResquareCloseEvent ->
-                println("test")
                 this.destroy()
             }
         }
@@ -87,6 +87,7 @@ class BukkitRootContainer internal constructor(
         threadPool?.shutdown()
         destroyed = true
         BukkitRootContainerController.removeRootContainer(this)
+        // stretch.free()
     }
 
     fun openInventory(entity: HumanEntity) {
@@ -111,7 +112,8 @@ fun createUI(
      */
     multiThread: Boolean = false,
     autoDestroy: Boolean = true,
-) = BukkitRootContainer({ +root() }, width, height, title, multiThread, autoDestroy)
+    debugName: String = title,
+) = BukkitRootContainer({ +root() }, width, height, title, multiThread, autoDestroy, debugName)
     .also { BukkitRootContainerController.addRootContainer(it) }
 
 fun <P : Any> createUI(
@@ -125,7 +127,8 @@ fun <P : Any> createUI(
      */
     multiThread: Boolean = false,
     autoDestroy: Boolean = true,
-) = BukkitRootContainer({ +root(props) }, width, height, title, multiThread, autoDestroy)
+    debugName: String = title,
+) = BukkitRootContainer({ +root(props) }, width, height, title, multiThread, autoDestroy, debugName)
     .also { BukkitRootContainerController.addRootContainer(it) }
 
 fun <P : Any> createUI(
@@ -139,5 +142,6 @@ fun <P : Any> createUI(
      */
     multiThread: Boolean = false,
     autoDestroy: Boolean = true,
-) = BukkitRootContainer({ +root(props) }, width, height, title, multiThread, autoDestroy)
+    debugName: String = title,
+) = BukkitRootContainer({ +root(props) }, width, height, title, multiThread, autoDestroy, debugName)
     .also { BukkitRootContainerController.addRootContainer(it) }
