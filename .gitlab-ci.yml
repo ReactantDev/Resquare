@@ -15,7 +15,7 @@ before_script:
 build:
   stage: build
   script:
-    - ./gradlew --build-cache assemble
+    - ./gradlew --build-cache build
     - mv resquare-debugger/build/libs/* ./build/libs
   cache:
     key: "$CI_COMMIT_REF_NAME"
@@ -32,6 +32,12 @@ test:
   script:
     - './gradlew test jacocoTestReport' # jacoco must be configured to create an xml report
     - cat build/reports/jacoco/test/html/index.html
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    policy: pull
+    paths:
+      - build
+      - .gradle
   artifacts:
     paths:
       - build/reports/jacoco/test/jacocoTestReport.xml
