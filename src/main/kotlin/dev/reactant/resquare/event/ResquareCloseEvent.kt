@@ -7,6 +7,6 @@ import org.bukkit.event.inventory.InventoryCloseEvent
 class ResquareCloseEvent(
     bukkitEvent: InventoryCloseEvent,
     override val target: BukkitRootContainer,
-) : ResquareBukkitEvent<InventoryCloseEvent, BukkitRootContainer>(bukkitEvent) {
+) : ResquareBukkitEvent<InventoryCloseEvent>(bukkitEvent) {
     val player: HumanEntity get() = bukkitEvent.player
 }

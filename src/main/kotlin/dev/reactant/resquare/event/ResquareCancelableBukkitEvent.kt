@@ -3,9 +3,9 @@ package dev.reactant.resquare.event
 import org.bukkit.event.Cancellable
 import org.bukkit.event.Event
 
-abstract class ResquareCancelableBukkitEvent<out E : Event, out T : EventTarget>(
+abstract class ResquareCancelableBukkitEvent<out E : Event>(
     bukkitEvent: E
-) : ResquareBukkitEvent<E, T>(bukkitEvent), ResquareCancelableEvent {
+) : ResquareBukkitEvent<E>(bukkitEvent), ResquareCancelableEvent {
     override var defaultPrevented: Boolean
         get() = (bukkitEvent as Cancellable).isCancelled
         set(value) {

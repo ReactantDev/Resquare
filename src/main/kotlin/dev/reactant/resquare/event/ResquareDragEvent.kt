@@ -6,4 +6,4 @@ import org.bukkit.event.inventory.InventoryDragEvent
 class ResquareDragEvent(
     bukkitEvent: InventoryDragEvent,
     override val target: BukkitRootContainer,
-) : ResquareInteractEvent<InventoryDragEvent, BukkitRootContainer>(bukkitEvent)
+) : ResquareInteractEvent<InventoryDragEvent>(bukkitEvent)

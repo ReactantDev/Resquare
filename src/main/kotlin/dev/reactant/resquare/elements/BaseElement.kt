@@ -7,8 +7,8 @@ import dev.reactant.resquare.event.ResquareEvent
 import dev.reactant.resquare.utils.getAllExtendedClass
 import java.util.LinkedList
 
-private typealias InternalEventHandlersMap = HashMap<Class<out ResquareEvent<*>>, LinkedHashSet<EventHandler<ResquareEvent<*>>>>
-private typealias ExternalEventHandlersMap = Map<Class<out ResquareEvent<*>>, LinkedHashSet<EventHandler<ResquareEvent<*>>>>
+private typealias InternalEventHandlersMap = HashMap<Class<out ResquareEvent>, LinkedHashSet<EventHandler<ResquareEvent>>>
+private typealias ExternalEventHandlersMap = Map<Class<out ResquareEvent>, LinkedHashSet<EventHandler<ResquareEvent>>>
 
 /**
  * A base element that implemented event dispatcher
@@ -25,7 +25,7 @@ abstract class BaseElement() : Element {
 
     override val debugName: String = this.javaClass.simpleName.toLowerCase()
 
-    override fun dispatchEvent(event: ResquareEvent<*>) {
+    override fun dispatchEvent(event: ResquareEvent) {
         if (event.target != this) throw IllegalArgumentException("Event target must be the event dispatching element")
 
         val eventParentPath = LinkedList<Element>()
@@ -44,7 +44,7 @@ abstract class BaseElement() : Element {
 
                     getAllExtendedClass(event.javaClass).forEach { eventClass ->
                         if (event.propagationStopped) return
-                        val handlers: Set<(event: ResquareEvent<*>) -> Unit> = when (phase) {
+                        val handlers: Set<(event: ResquareEvent) -> Any> = when (phase) {
                             EventPhase.CAPTURING_PHASE -> currentTarget.eventCaptureHandlers[eventClass] ?: setOf()
                             EventPhase.AT_TARGET -> (currentTarget.eventCaptureHandlers[eventClass] ?: setOf()) +
                                 (currentTarget.eventHandlers[eventClass] ?: setOf())
@@ -63,23 +63,23 @@ abstract class BaseElement() : Element {
         }
     }
 
-    fun <T : ResquareEvent<*>> addEventListener(
+    fun <T : ResquareEvent> addEventListener(
         eventClass: Class<T>,
         capture: Boolean = false,
         handler: EventHandler<T>,
     ): EventHandler<in T> {
         (if (capture) _eventCaptureHandlers else _eventHandlers)
             .getOrPut(eventClass) { LinkedHashSet() }
-            .add(handler as (ResquareEvent<*>) -> Unit)
+            .add(handler as (ResquareEvent) -> Unit)
         return handler
     }
 
-    inline fun <reified T : ResquareEvent<*>> addEventListener(
+    inline fun <reified T : ResquareEvent> addEventListener(
         capture: Boolean = false,
         noinline handler: EventHandler<in T>,
     ): EventHandler<T> = addEventListener(T::class.java, capture, handler)
 
-    fun <T : ResquareEvent<*>> removeEventListener(
+    fun <T : ResquareEvent> removeEventListener(
         eventClass: Class<T>,
         capture: Boolean = false,
         handler: EventHandler<T>,
@@ -90,11 +90,11 @@ abstract class BaseElement() : Element {
         }
     }
 
-    inline fun <reified T : ResquareEvent<*>> removeEventListener(
+    inline fun <reified T : ResquareEvent> removeEventListener(
         noinline handler: EventHandler<T>,
     ) = removeEventListener(T::class.java, false, handler)
 
-    inline fun <reified T : ResquareEvent<*>> removeEventListener(
+    inline fun <reified T : ResquareEvent> removeEventListener(
         capture: Boolean,
         noinline handler: EventHandler<T>,
     ) = removeEventListener(T::class.java, capture, handler)

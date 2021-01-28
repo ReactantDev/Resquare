@@ -92,6 +92,9 @@ class BukkitRootContainer internal constructor(
     override fun destroy() {
         if (destroyed) return
         super.destroy()
+        _eventHandlers.clear()
+        _eventCaptureHandlers.clear()
+        inventory.viewers.forEach { it.closeInventory() }
         compositeDisposable.dispose()
         threadPool?.shutdown()
         destroyed = true

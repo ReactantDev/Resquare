@@ -49,7 +49,7 @@ object BukkitRootContainerController {
 
     fun getRootContainerById(rootContainerId: String) = rootContainerIdMap[rootContainerId]
 
-    private fun dispatchEventToTarget(resquareEvent: ResquareEvent<*>) {
+    private fun dispatchEventToTarget(resquareEvent: ResquareEvent) {
         resquareEvent.target.dispatchEvent(resquareEvent)
     }
 

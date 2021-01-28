@@ -1,7 +1,7 @@
 package dev.reactant.resquare.event
 
-abstract class ResquareEvent<out T : EventTarget> {
-    abstract val target: T
+abstract class ResquareEvent {
+    abstract val target: EventTarget
 
     lateinit var currentTarget: EventTarget
         internal set

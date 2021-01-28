@@ -4,9 +4,9 @@ import org.bukkit.entity.HumanEntity
 import org.bukkit.event.Event
 import org.bukkit.event.inventory.InventoryInteractEvent
 
-abstract class ResquareInteractEvent<out E : InventoryInteractEvent, out T : EventTarget>(
+abstract class ResquareInteractEvent<out E : InventoryInteractEvent>(
     bukkitEvent: E
-) : ResquareCancelableBukkitEvent<E, T>(bukkitEvent) {
+) : ResquareCancelableBukkitEvent<E>(bukkitEvent) {
     override var defaultPrevented: Boolean
         get() = bukkitEvent.isCancelled
         set(value) {

@@ -7,6 +7,6 @@ import org.bukkit.event.inventory.InventoryOpenEvent
 class ResquareOpenEvent(
     bukkitEvent: InventoryOpenEvent,
     override val target: BukkitRootContainer,
-) : ResquareCancelableBukkitEvent<InventoryOpenEvent, BukkitRootContainer>(bukkitEvent) {
+) : ResquareCancelableBukkitEvent<InventoryOpenEvent>(bukkitEvent) {
     val player: HumanEntity get() = bukkitEvent.player
 }

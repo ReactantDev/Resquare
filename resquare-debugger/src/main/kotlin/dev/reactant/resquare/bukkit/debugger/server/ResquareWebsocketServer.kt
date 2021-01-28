@@ -7,10 +7,13 @@ import dev.reactant.resquare.bukkit.container.BukkitRootContainer
 import dev.reactant.resquare.bukkit.debugger.server.models.DebuggerRootContainer
 import dev.reactant.resquare.profiler.ProfilerDataChannel
 import dev.reactant.resquare.profiler.ProfilerResult
+import io.ktor.application.Application
 import io.ktor.application.install
 import io.ktor.http.cio.websocket.Frame
 import io.ktor.http.cio.websocket.readText
 import io.ktor.routing.routing
+import io.ktor.server.engine.applicationEngineEnvironment
+import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.netty.NettyApplicationEngine
@@ -49,7 +52,7 @@ data class RemoteOutput<T>(
 data class RootContainerRecord(
     val id: String,
     val title: String,
-    val viewer: List<String>
+    val viewer: List<String>,
 ) {
     companion object {
         fun from(rootContainer: BukkitRootContainer) = RootContainerRecord(
@@ -62,7 +65,7 @@ data class RootContainerRecord(
 
 object ResquareWebsocketServer {
     val gson = Gson()
-    var server: NettyApplicationEngine = embeddedServer(Netty, port = 27465) {
+    val websocketModule: Application.() -> Unit = {
         install(WebSockets)
 
         routing {
@@ -144,6 +147,18 @@ object ResquareWebsocketServer {
             }
         }
     }
+
+    val env = applicationEngineEnvironment {
+        connector {
+            host = "127.0.0.1"
+            port = 27465
+        }
+        module {
+            websocketModule()
+        }
+    }
+
+    var server: NettyApplicationEngine = embeddedServer(Netty, env)
 
     fun onStart() {
         server.start(false)

@@ -15,8 +15,8 @@ data class DivProps(
     val style: DivStyle = DivStyle(),
     val background: ItemStack? = null,
     override val children: Node.ComponentChildrenNode = childrenOf(),
-    val onClick: EventHandler<ResquareClickEvent<*>>? = null,
-    val onClickCapture: EventHandler<ResquareClickEvent<*>>? = null,
+    val onClick: EventHandler<ResquareClickEvent>? = null,
+    val onClickCapture: EventHandler<ResquareClickEvent>? = null,
 ) : PropsWithChildren
 
 class Div(val props: DivProps) : BaseElement() {
@@ -29,12 +29,12 @@ class Div(val props: DivProps) : BaseElement() {
     init {
         if (props.onClick != null) {
             this._eventHandlers.getOrPut(ResquareClickEvent::class.java) { LinkedHashSet() }
-                .add(props.onClick as (ResquareEvent<*>) -> Unit)
+                .add(props.onClick as (ResquareEvent) -> Unit)
         }
 
         if (props.onClickCapture != null) {
             this._eventCaptureHandlers.getOrPut(ResquareClickEvent::class.java) { LinkedHashSet() }
-                .add(props.onClickCapture as (ResquareEvent<*>) -> Unit)
+                .add(props.onClickCapture as (ResquareEvent) -> Unit)
         }
     }
 }

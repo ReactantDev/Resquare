@@ -1,6 +1,10 @@
 package dev.reactant.resquare.render
 
+import dev.reactant.resquare.bukkit.ResquareBukkit
 import dev.reactant.resquare.dom.RootContainer
+import dev.reactant.resquare.event.ResquareClickEvent
+import dev.reactant.resquare.event.ResquareDragEvent
+import org.bukkit.Bukkit
 
 internal fun <T> claimState(initialValue: T) =
     getCurrentThreadNodeRenderState().claimState(initialValue)
@@ -10,7 +14,7 @@ internal fun <T> claimStateLazy(initialValueFactory: () -> T) =
 
 class StateAccessor<T>(
     private val value: T,
-    private val setter: (T) -> Unit
+    private val setter: (T) -> Unit,
 ) {
     fun getValue() = value
     fun setValue(newValue: T) = setter(newValue)
@@ -21,6 +25,11 @@ class StateAccessor<T>(
 
 fun <T> useState(initialValue: T): StateAccessor<T> {
     val (getValue, setValue) = claimState(initialValue)
+    return StateAccessor(getValue(), setValue.stateScheduledUpdater)
+}
+
+fun <T> useStateLazy(initialValueFactory: () -> T): StateAccessor<T> {
+    val (getValue, setValue) = claimStateLazy(initialValueFactory)
     return StateAccessor(getValue(), setValue.stateScheduledUpdater)
 }
 
@@ -59,3 +68,27 @@ fun useEffect(effect: () -> (() -> Unit)?, deps: Array<Any?>? = null) {
 }
 
 fun useRootContainer(): RootContainer = getCurrentThreadNodeRenderState().rootContainer
+
+fun useInterval(interval: Long): Long {
+    val (tick, setTick) = useState(0L)
+    useEffect({
+        Bukkit.getScheduler().runTaskLater(ResquareBukkit.instance, Runnable { setTick(tick + 1) }, interval)
+            .let { it::cancel }
+    }, arrayOf(interval))
+    return tick
+}
+
+/**
+ * Listen to all interact event of this UI in capture phase and cancel them
+ */
+fun useCancelRawEvent() {
+    val rootContainer = useRootContainer()
+    useEffect({
+        val clickHandler = rootContainer.addEventListener<ResquareClickEvent> { it.preventDefault() }
+        val dragHandler = rootContainer.addEventListener<ResquareDragEvent> { it.preventDefault() };
+        {
+            rootContainer.removeEventListener(clickHandler)
+            rootContainer.removeEventListener(dragHandler)
+        }
+    }, arrayOf())
+}

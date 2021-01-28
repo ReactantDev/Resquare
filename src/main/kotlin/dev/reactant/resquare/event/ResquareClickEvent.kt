@@ -3,11 +3,11 @@ package dev.reactant.resquare.event
 import org.bukkit.event.inventory.InventoryClickEvent
 
 @Suppress("DEPRECATION")
-class ResquareClickEvent<out T : EventTarget>(
+class ResquareClickEvent(
     @Deprecated("Direct access to Resquare wrapped inventoryClickEvent is a misuse")
     override val bukkitEvent: InventoryClickEvent,
-    override val target: T,
-) : ResquareInteractEvent<InventoryClickEvent, T>(bukkitEvent) {
+    override val target: EventTarget,
+) : ResquareInteractEvent<InventoryClickEvent>(bukkitEvent) {
 
     val slotType get() = bukkitEvent.slotType
     val cursor get() = bukkitEvent.cursor
