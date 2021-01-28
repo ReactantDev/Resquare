@@ -16,7 +16,7 @@ build:
   stage: build
   script:
     - ./gradlew --build-cache assemble
-    - mv resquare-debugger/build/libs/* ./build/
+    - mv resquare-debugger/build/libs/* ./build/libs
   cache:
     key: "$CI_COMMIT_REF_NAME"
     policy: push
