@@ -4,6 +4,10 @@ import dev.reactant.resquare.bukkit.ResquareBukkit
 import dev.reactant.resquare.dom.RootContainer
 import dev.reactant.resquare.event.ResquareClickEvent
 import dev.reactant.resquare.event.ResquareDragEvent
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.subjects.BehaviorSubject
 import org.bukkit.Bukkit
 
 internal fun <T> claimState(initialValue: T) =
@@ -84,11 +88,44 @@ fun useInterval(interval: Long): Long {
 fun useCancelRawEvent() {
     val rootContainer = useRootContainer()
     useEffect({
-        val clickHandler = rootContainer.addEventListener<ResquareClickEvent> { it.preventDefault() }
-        val dragHandler = rootContainer.addEventListener<ResquareDragEvent> { it.preventDefault() };
+        val clickHandler = rootContainer.addEventListener<ResquareClickEvent>(true) { it.preventDefault() }
+        val dragHandler = rootContainer.addEventListener<ResquareDragEvent>(true) { it.preventDefault() };
         {
             rootContainer.removeEventListener(clickHandler)
             rootContainer.removeEventListener(dragHandler)
         }
     }, arrayOf())
+}
+
+fun <T> useObservable(observable: Observable<T>): T? {
+    val (lastValue, setLastValue) = useState<T?>(null)
+    useEffect({
+        observable.subscribe { setLastValue(it) }
+            .let { it::dispose }
+    }, arrayOf(observable))
+    return lastValue
+}
+
+fun <T> useCompletable(completable: Completable): Boolean {
+    val (completed, setCompleted) = useState(false)
+    useEffect({
+        completable.subscribe { setCompleted(true) }
+            .let { it::dispose }
+    }, arrayOf(completable))
+    return completed
+}
+
+fun <T> useSingle(single: Single<T>): T? {
+    val (value, setValue) = useState<T?>(null)
+    useEffect({
+        single.subscribe { it, _ -> setValue(it) }
+            .let { it::dispose }
+    }, arrayOf(single))
+    return value
+}
+
+fun <T> useBehaviourSubject(behaviorSubject: BehaviorSubject<T>): Pair<T, (T) -> Unit> {
+    val setter = useCallback({ value: T -> behaviorSubject.onNext(value) }, arrayOf(behaviorSubject))
+    val lastValue = useObservable(behaviorSubject) ?: behaviorSubject.value
+    return useMemo({ lastValue to setter }, arrayOf(behaviorSubject, setter))
 }
