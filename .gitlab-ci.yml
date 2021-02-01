@@ -47,9 +47,7 @@ publish:
   script:
     - ./gradlew publish
   only:
-    - tags
-  except:
-    - branches
+    - master
 
 coverage:
   # Must be in a stage later than test-jdk11's stage.

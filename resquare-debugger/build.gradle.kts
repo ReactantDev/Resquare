@@ -24,8 +24,10 @@ group = "dev.reactant"
 val gitVersion: groovy.lang.Closure<String> by extra
 val versionDetails: groovy.lang.Closure<String> by extra
 val details = versionDetails() as com.palantir.gradle.gitversion.VersionDetails
-version = details.version
-val isRelease = details.isCleanTag && !details.version.endsWith("-SNAPSHOT")
+version = details.lastTag + if (!details.isCleanTag && !details.lastTag.endsWith("-SNAPSHOT")) "-SNAPSHOT" else ""
+val isRelease = details.isCleanTag && !details.lastTag.endsWith("-SNAPSHOT")
+
+println(version)
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
