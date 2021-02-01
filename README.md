@@ -1,6 +1,8 @@
 # Resquare
 Resquare is a UI library for Kotlin spigot plugin.
 
+Check our document here: https://resquare.reactant.dev/docs/introduction
+
 ## Contribute
 
 ### ktlint

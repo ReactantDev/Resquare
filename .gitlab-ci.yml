@@ -42,6 +42,15 @@ test:
     paths:
       - build/reports/jacoco/test/jacocoTestReport.xml
 
+publish:
+  stage: deploy
+  script:
+    - ./gradlew publish
+  only:
+    - tags
+  except:
+    - branches
+
 coverage:
   # Must be in a stage later than test-jdk11's stage.
   # The `visualize` stage does not exist by default.

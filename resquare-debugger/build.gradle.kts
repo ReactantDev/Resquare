@@ -4,12 +4,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URI
 
 val versionNumber = "0.0.1"
-val isSnapshot = true
 val kotlinVersion = "1.4.21"
 val ktorVersion = "1.5.0"
-
-group = "dev.reactant"
-version = "$versionNumber${if (isSnapshot) "-SNAPSHOT" else ""}"
 
 plugins {
     java
@@ -21,7 +17,15 @@ plugins {
     id("org.jetbrains.dokka")
     id("org.jlleitschuh.gradle.ktlint")
     id("org.jlleitschuh.gradle.ktlint-idea")
+    id("com.palantir.git-version") version ("0.12.3")
 }
+
+group = "dev.reactant"
+val gitVersion: groovy.lang.Closure<String> by extra
+val versionDetails: groovy.lang.Closure<String> by extra
+val details = versionDetails() as com.palantir.gradle.gitversion.VersionDetails
+version = details.version
+val isRelease = details.isCleanTag && !details.version.endsWith("-SNAPSHOT")
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -163,7 +167,7 @@ publishing {
     }
 }
 
-if (!isSnapshot) {
+if (isRelease) {
     signing {
         val signingKey: String? by project
         val signingPassword: String? by project
