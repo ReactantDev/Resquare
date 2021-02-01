@@ -48,7 +48,7 @@ fun <P : Any> declareComponent(
 fun <P : Any> declareComponent(
     defaultPropsFactory: () -> P,
     content: (props: P) -> Node,
-): Component.WithOptionalProps<P> = declareComponent(defaultPropsFactory = defaultPropsFactory, content = content)
+): Component.WithOptionalProps<P> = declareComponent("unnamed", defaultPropsFactory, content)
 
 fun declareComponent(name: String = "unnamed", content: () -> Node): Component.WithoutProps =
     Component.WithoutProps(name, content)
