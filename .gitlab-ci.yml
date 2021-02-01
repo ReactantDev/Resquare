@@ -12,6 +12,11 @@ variables:
 before_script:
   - export GRADLE_USER_HOME=`pwd`/.gradle
 
+cache:
+  paths:
+    - .gradle/wrapper
+    - .gradle/caches
+
 build:
   stage: build
   script:
@@ -33,7 +38,7 @@ test:
     - './gradlew test jacocoTestReport' # jacoco must be configured to create an xml report
     - cat build/reports/jacoco/test/html/index.html
   cache:
-    key: "$CI_COMMIT_REF_NAME"
+    key: "$ci_commit_ref_name"
     policy: pull
     paths:
       - build
@@ -45,7 +50,13 @@ test:
 publish:
   stage: deploy
   script:
-    - ./gradlew publish
+    - ./gradlew --build-cache publish
+  cache:
+    key: "$ci_commit_ref_name"
+    policy: pull
+    paths:
+      - build
+      - .gradle
   only:
     - master
     - tags
