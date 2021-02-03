@@ -50,7 +50,7 @@ dependencies {
     api("io.reactivex.rxjava3:rxjava:3.0.9")
     api("io.reactivex.rxjava3:rxkotlin:3.0.1")
 
-    api("com.gitlab.reactant:stretch-kotlin-jvm-bindings:ae0e93e27e")
+    api("com.gitlab.reactant:stretch-kotlin-jvm-bindings:16d52f2b3f")
 
     compileOnly("org.spigotmc:spigot-api:1.16.4-R0.1-SNAPSHOT")
     implementation(kotlin("reflect", kotlinVersion))
