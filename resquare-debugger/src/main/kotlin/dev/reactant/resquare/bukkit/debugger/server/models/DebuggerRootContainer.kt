@@ -36,7 +36,7 @@ data class DebuggerElement(
     val type: String,
     val id: String,
     val style: DivStyle?,
-    val background: ItemStack?,
+    val item: ItemStack?,
     val children: List<DebuggerElement>,
 ) {
     companion object {
