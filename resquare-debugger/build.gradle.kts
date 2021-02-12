@@ -3,7 +3,6 @@ import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URI
 
-val versionNumber = "0.0.1"
 val kotlinVersion = "1.4.21"
 val ktorVersion = "1.5.0"
 
@@ -17,7 +16,7 @@ plugins {
     id("org.jetbrains.dokka")
     id("org.jlleitschuh.gradle.ktlint")
     id("org.jlleitschuh.gradle.ktlint-idea")
-    id("com.palantir.git-version") version ("0.12.3")
+    id("com.palantir.git-version")
 }
 
 group = "dev.reactant"
@@ -27,7 +26,7 @@ val details = versionDetails() as com.palantir.gradle.gitversion.VersionDetails
 version = details.lastTag + if (!details.isCleanTag && !details.lastTag.endsWith("-SNAPSHOT")) "-SNAPSHOT" else ""
 val isRelease = details.isCleanTag && !details.lastTag.endsWith("-SNAPSHOT")
 
-println(version)
+println("Preparing build ${project.name} $version")
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8

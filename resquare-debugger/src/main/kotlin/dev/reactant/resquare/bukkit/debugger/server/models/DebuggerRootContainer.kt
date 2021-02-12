@@ -44,7 +44,7 @@ data class DebuggerElement(
             element.javaClass.canonicalName,
             element.id,
             if (element is Div) element.props.style else null,
-            if (element is Div) element.props.background else null,
+            if (element is Div) element.props.item else null,
             element.children.map { from(it) },
         )
     }

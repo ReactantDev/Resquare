@@ -13,7 +13,7 @@ import java.util.UUID
 
 data class DivProps(
     val style: DivStyle = DivStyle(),
-    val background: ItemStack? = null,
+    val item: ItemStack? = null,
     override val children: Node.ComponentChildrenNode = childrenOf(),
     val onClick: EventHandler<ResquareClickEvent>? = null,
     val onClickCapture: EventHandler<ResquareClickEvent>? = null,

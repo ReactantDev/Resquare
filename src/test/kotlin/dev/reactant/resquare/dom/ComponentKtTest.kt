@@ -39,7 +39,7 @@ internal class ComponentKtTest {
         val background = ItemStack(Material.APPLE)
 
         val content = declareComponent {
-            +div(DivProps(background = background))
+            +div(DivProps(item = background))
         }
 
         data class ContainerProps(val children: Node?)

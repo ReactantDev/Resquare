@@ -44,7 +44,7 @@ object BukkitStyleRender {
                         if (pixel.element == null) pixel.element = boundingRect.element
 
                         if (pixel.itemStack == null) {
-                            pixel.itemStack = (boundingRect.element as? Div)?.props?.background?.clone()
+                            pixel.itemStack = (boundingRect.element as? Div)?.props?.item?.clone()
                         }
 
                         if (pixel.itemStack != null) {
