@@ -79,8 +79,9 @@ val slot = declareComponent { props: SlotProps ->
                             takingItem.amount -= puttingAmount
                         }
                     }
-                    if (takingItem.amount != 0)
+                    if (takingItem.amount != 0) {
                         throw IllegalStateException("Item allocate amount wrong, remain item ${takingItem.amount}")
+                    }
                 } else {
                     e.whoClicked.itemOnCursor.amount += takingItem.amount
                 }
