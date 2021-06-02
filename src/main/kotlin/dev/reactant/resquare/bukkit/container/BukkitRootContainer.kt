@@ -105,9 +105,11 @@ class BukkitRootContainer internal constructor(
 
     fun openInventory(entity: HumanEntity) {
         if (lastStyleRenderResult == null) {
-            styleRenderResultObservable.firstElement().subscribe {
-                entity.openInventory(this.inventory)
-            }.also { compositeDisposable.add(it) }
+            styleRenderResultObservable
+                .observeOn(ResquareBukkit.instance.uiUpdateMainThreadScheduler)
+                .firstElement()
+                .subscribe { entity.openInventory(this.inventory) }
+                .also { compositeDisposable.add(it) }
         } else {
             entity.openInventory(this.inventory)
         }
